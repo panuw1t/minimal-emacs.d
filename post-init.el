@@ -66,7 +66,7 @@
   (save-place-limit 400))
 
 (use-package which-key
-  :ensure t
+  :ensure nil
   :config
   (which-key-mode))
 
@@ -78,7 +78,9 @@
   :config
   (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
   (mapc #'disable-theme custom-enabled-themes)
-  (load-theme 'wombat t))
+  (load-theme 'wombat t)
+  (global-display-line-numbers-mode 1)
+  (setq-default display-line-numbers-type 'relative))
 
 (use-package corfu
   :ensure t
@@ -120,7 +122,7 @@
   :custom
   (completion-styles '(orderless basic))
   (completion-category-overrides '((file (styles partial-completion))))
-  (completion-pcm-leading-wildcard t)   ;; Emacs 31: partial-completion behaves like substring
+  ;; (completion-pcm-leading-wildcard t)   ;; Emacs 31: partial-completion behaves like substring
   )
 
 (use-package marginalia
@@ -152,3 +154,46 @@
   :hook (after-init . undo-fu-session-global-mode)
   :config
   (setq undo-fu-session-incompatible-files '("/COMMIT_EDITMSG\\'" "/git-rebase-todo\\'")))
+
+(use-package eglot
+  :config
+  (setf (alist-get '(kotlin-mode kotlin-ts-mode) eglot-server-programs nil nil #'equal)
+        '("nc" "127.0.0.1" "9999")))
+
+(use-package org
+  :ensure nil
+  :commands (org-mode org-version)
+  :mode
+  ("\\.org\\'" . org-mode)
+  :custom
+  (org-hide-leading-stars t)
+  (org-startup-indented t)
+  (org-adapt-indentation nil)
+  (org-edit-src-content-indentation 0)
+  ;; (org-fontify-done-headline t)
+  ;; (org-fontify-todo-headline t)
+  ;; (org-fontify-whole-heading-line t)
+  ;; (org-fontify-quote-and-verse-blocks t)
+  (org-startup-truncated t))
+
+(use-package treesit-auto
+  :ensure t
+  :custom
+  (treesit-auto-install 'prompt)
+  :config
+  (treesit-auto-add-to-auto-mode-alist 'all)
+  (global-treesit-auto-mode))
+
+(unless (package-installed-p 'kotlin-ts-mode)
+  (package-vc-install
+   '(kotlin-ts-mode
+     :url "https://gitlab.com/bricka/emacs-kotlin-ts-mode.git")))
+
+(use-package kotlin-ts-mode
+  :ensure nil
+  :mode (("\\.kt\\'"  . kotlin-ts-mode)
+         ("\\.kts\\'" . kotlin-ts-mode)))
+
+(use-package magit
+  :commands (magit-status magit-blame)
+  :bind (("C-x g" . magit-status)))
