@@ -66,7 +66,7 @@
   (save-place-limit 400))
 
 (use-package which-key
-  :ensure nil
+  :ensure t
   :config
   (which-key-mode))
 
@@ -75,21 +75,25 @@
   (auto-save-default t)
   (auto-save-interval 300)
   (auto-save-timeout 30)
+  (dabbrev-case-replace nil)
+  (dabbrev-case-fold-search nil)
   :config
   (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
   (mapc #'disable-theme custom-enabled-themes)
   (load-theme 'wombat t)
   (global-display-line-numbers-mode 1)
-  (setq-default display-line-numbers-type 'relative))
+  (setq-default display-line-numbers-type 'relative)
+)
 
 (use-package corfu
   :ensure t
   :commands (corfu-mode global-corfu-mode)
-
   :hook ((prog-mode . corfu-mode)
          (shell-mode . corfu-mode)
          (eshell-mode . corfu-mode))
   :custom
+  (corfu-cycle t)
+  (corfu-preselect 'prompt)
   (read-extended-command-predicate #'command-completion-default-include-p)
   (text-mode-ispell-word-completion nil)
   (tab-always-indent 'complete)
@@ -156,9 +160,13 @@
   (setq undo-fu-session-incompatible-files '("/COMMIT_EDITMSG\\'" "/git-rebase-todo\\'")))
 
 (use-package eglot
+  :ensure nil
+  :commands (eglot-ensure
+             eglot-rename
+             eglot-format-buffer)
   :config
   (setf (alist-get '(kotlin-mode kotlin-ts-mode) eglot-server-programs nil nil #'equal)
-        '("nc" "127.0.0.1" "9999")))
+        '("127.0.0.1" 9999)))
 
 (use-package org
   :ensure nil
@@ -192,7 +200,12 @@
 (use-package kotlin-ts-mode
   :ensure nil
   :mode (("\\.kt\\'"  . kotlin-ts-mode)
-         ("\\.kts\\'" . kotlin-ts-mode)))
+         ("\\.kts\\'" . kotlin-ts-mode))
+  :hook
+  (kotlin-ts-mode . (lambda ()
+                      (setq-local eglot-ignored-server-capabilities
+                                  '(:completionProvider))))
+  )
 
 (use-package magit
   :commands (magit-status magit-blame)
