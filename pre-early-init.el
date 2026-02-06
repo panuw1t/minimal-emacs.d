@@ -15,3 +15,5 @@
            gcs-done))
 
 (add-hook 'emacs-startup-hook #'display-startup-time 100)
+
+(setq minimal-emacs-ui-features '(tooltips))
