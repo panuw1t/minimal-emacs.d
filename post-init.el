@@ -66,15 +66,41 @@
   (save-place-limit 400))
 
 (use-package which-key
-  :ensure t
-  :config
-  (which-key-mode))
+  :ensure t ; builtin
+  :commands which-key-mode
+  :hook (after-init . which-key-mode)
+  :custom
+  (which-key-idle-delay 1.5)
+  (which-key-idle-secondary-delay 0.25)
+  (which-key-add-column-padding 1)
+  (which-key-max-description-length 40))
 
 (use-package compile
   :ensure nil
   :config
   (setf (alist-get 'gradle-kotlin compilation-error-regexp-alist-alist)
         '("^e: file://\\([^:]+\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3)))
+
+(use-package uniquify
+  :ensure nil
+  :custom
+  (uniquify-buffer-name-style 'reverse)
+  (uniquify-separator "•")
+  (uniquify-after-kill-buffer-p t))
+
+(use-package tooltip
+  :ensure nil
+  :hook (after-init . tooltip-mode)
+  :custom
+  (tooltip-delay 20)
+  (tooltip-short-delay 0.08)
+  (tooltip-hide-delay 4))
+
+;; (use-package server
+;;   :ensure nil
+;;   :commands server-start
+;;   :hook
+;;   (after-init . server-start))
 
 (use-package emacs
   :custom
@@ -83,13 +109,60 @@
   (auto-save-timeout 30)
   (dabbrev-case-replace nil)
   (dabbrev-case-fold-search nil)
+  (package-install-upgrade-built-in t)
+  (line-number-mode t)
+  (column-number-mode t)
+  (mode-line-position-column-line-format '("%l:%C"))
+  (treesit-font-lock-level 4)
+  (dired-movement-style 'bounded-files)
+  (confirm-kill-emacs 'y-or-n-p)
   :config
   (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
   (mapc #'disable-theme custom-enabled-themes)
   (load-theme 'wombat t)
-  (global-display-line-numbers-mode 1)
   (setq-default display-line-numbers-type 'relative)
-)
+  (dolist (hook '(prog-mode-hook text-mode-hook conf-mode-hook))
+    (add-hook hook #'display-line-numbers-mode))
+  (delete-selection-mode 1)
+
+  (unless (and (eq window-system 'mac)
+               (bound-and-true-p mac-carbon-version-string))
+    ;; Enables `pixel-scroll-precision-mode' on all operating systems and Emacs
+    ;; versions, except for emacs-mac.
+    ;;
+    ;; Enabling `pixel-scroll-precision-mode' is unnecessary with emacs-mac, as
+    ;; this version of Emacs natively supports smooth scrolling.
+    ;; https://bitbucket.org/mituharu/emacs-mac/commits/65c6c96f27afa446df6f9d8eff63f9cc012cc738
+    (setq pixel-scroll-precision-use-momentum nil) ; Precise/smoother scrolling
+    (pixel-scroll-precision-mode 1))
+
+  (add-hook 'after-init-hook #'display-time-mode)
+  (add-hook 'after-init-hook #'show-paren-mode)
+  (add-hook 'after-init-hook #'winner-mode)
+  (add-hook 'after-init-hook #'window-divider-mode)
+  (add-hook 'dired-mode-hook #'dired-hide-details-mode)
+  (setq dired-omit-files (concat "\\`[.]\\'"
+                                 "\\|\\(?:\\.js\\)?\\.meta\\'"
+                                 "\\|\\.\\(?:elc|a\\|o\\|pyc\\|pyo\\|swp\\|class\\)\\'"
+                                 "\\|^\\.DS_Store\\'"
+                                 "\\|^\\.\\(?:svn\\|git\\)\\'"
+                                 "\\|^\\.ccls-cache\\'"
+                                 "\\|^__pycache__\\'"
+                                 "\\|^\\.project\\(?:ile\\)?\\'"
+                                 "\\|^flycheck_.*"
+                                 "\\|^flymake_.*"))
+  (add-hook 'dired-mode-hook #'dired-omit-mode)
+  ;; dired: Group directories first
+  (with-eval-after-load 'dired
+    (let ((args "--group-directories-first -ahlv"))
+      (when (or (eq system-type 'darwin) (eq system-type 'berkeley-unix))
+        (if-let* ((gls (executable-find "gls")))
+            (setq insert-directory-program gls)
+          (setq args nil)))
+      (when args
+        (setq dired-listing-switches args))))
+  (add-hook 'after-init-hook #'minibuffer-depth-indicate-mode)
+  )
 
 (use-package corfu
   :ensure t
