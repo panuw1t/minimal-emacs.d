@@ -117,6 +117,9 @@
   (dired-movement-style 'bounded-files)
   (confirm-kill-emacs 'y-or-n-p)
   :config
+  (global-set-key (kbd "M-o") 'other-window)
+  (global-set-key (kbd "C-x C-r") 'recentf-open-files)
+
   (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
   (mapc #'disable-theme custom-enabled-themes)
   (load-theme 'wombat t)
@@ -204,7 +207,8 @@
   :ensure t
   :custom
   (completion-styles '(orderless basic))
-  (completion-category-overrides '((file (styles partial-completion))))
+  (completion-category-overrides '((file (styles partial-completion))
+                                   (project-file (styles partial-completion))))
   ;; (completion-pcm-leading-wildcard t)   ;; Emacs 31: partial-completion behaves like substring
   )
 
@@ -450,7 +454,7 @@
                   (if (or (derived-mode-p 'yaml-mode)
                           (derived-mode-p 'yaml-ts-mode)
                           (derived-mode-p 'ansible-mode))
-                      (flyspell-prog-mode 1)
+                      (flyspell-prog-mode)
                     (flyspell-mode 1)))))
   :config
   ;; Remove strings from Flyspell
@@ -486,6 +490,31 @@
   :custom
   (helpful-max-buffers 7))
 
+(use-package yasnippet-snippets
+  :ensure t
+  :after yasnippet)
+
+(use-package yasnippet
+  :ensure t
+  :commands (yas-minor-mode
+             yas-global-mode)
+
+  :hook
+  (after-init . yas-global-mode)
+
+  :custom
+  (yas-also-auto-indent-first-line t)  ; Indent first line of snippet
+  (yas-also-indent-empty-lines t)
+  (yas-snippet-revival nil)  ; Setting this to t causes issues with undo
+  (yas-wrap-around-region nil) ; Do not wrap region when expanding snippets
+  ;; (yas-triggers-in-field nil)  ; Disable nested snippet expansion
+  ;; (yas-indent-line 'fixed) ; Do not auto-indent snippet content
+  ;; (yas-prompt-functions '(yas-no-prompt))  ; No prompt for snippet choices
+
+  :init
+  ;; Suppress verbose messages
+  (setq yas-verbosity 0))
+
 (use-package persist-text-scale
   :commands (persist-text-scale-mode
              persist-text-scale-restore)
@@ -494,3 +523,22 @@
 
   :custom
   (text-scale-mode-step 1.07))
+
+(use-package vterm ;; has prerequisite cmake, libtool check document
+  :ensure t
+  :commands (vterm)
+  :bind (("C-<return>" . my-vterm)))
+
+(defun my-vterm ()
+  "if in buffer *vterm* use switch-to-buffer other use vterm"
+  (interactive)
+  (if (string-match-p "\\*vterm\\*" (buffer-name))
+      (switch-to-buffer nil)
+    (vterm)))
+
+;; (use-package combobulate
+;;   :custom
+;;   (combobulate-key-prefix "C-c o")
+;;   :commands (combobulate-mode)
+;;   :hook (prog-mode . combobulate-mode)
+;;   :load-path ("~/combobulate"))
