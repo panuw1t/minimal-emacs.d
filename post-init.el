@@ -116,8 +116,8 @@
   (treesit-font-lock-level 4)
   (dired-movement-style 'bounded-files)
   (confirm-kill-emacs 'y-or-n-p)
+  (compilation-environment (list (concat "PATH=" (getenv "HOME") "/.bun/bin:" (getenv "PATH"))))
   :config
-  (global-set-key (kbd "M-o") 'other-window)
   (global-set-key (kbd "C-x C-r") 'recentf-open-files)
 
   (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
@@ -542,3 +542,9 @@
 ;;   :commands (combobulate-mode)
 ;;   :hook (prog-mode . combobulate-mode)
 ;;   :load-path ("~/combobulate"))
+
+(use-package ace-window
+  :ensure t
+  :custom
+  (aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
+  :bind (("M-o" . 'ace-window)))
