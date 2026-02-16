@@ -81,6 +81,10 @@
   (setf (alist-get 'gradle-kotlin compilation-error-regexp-alist-alist)
         '("^e: file://\\([^:]+\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3)))
 
+(use-package ansi-color
+  :ensure nil
+  :hook (compilation-filter . ansi-color-compilation-filter))
+
 (use-package uniquify
   :ensure nil
   :custom
@@ -494,7 +498,7 @@
   :ensure t
   :after yasnippet)
 
-(use-package yasnippet
+(use-package yasnippet                  ; alternative https://github.com/minad/tempel
   :ensure t
   :commands (yas-minor-mode
              yas-global-mode)
@@ -527,14 +531,89 @@
 (use-package vterm ;; has prerequisite cmake, libtool check document
   :ensure t
   :commands (vterm)
-  :bind (("C-<return>" . my-vterm)))
+  :bind (("C-<return>" . my-toggle-vterm)
+         (:map vterm-mode-map
+               ("C-M-1" . my-vterm-1)
+               ("C-M-2" . my-vterm-2)
+               ("C-M-3" . my-vterm-3)
+               ("C-M-4" . my-vterm-4)
+               ("C-M-5" . my-vterm-5)
+               ("C-M-]" . my-vterm-next)
+               ("C-M-[" . my-vterm-prev))))
 
-(defun my-vterm ()
-  "if in buffer *vterm* use switch-to-buffer other use vterm"
+(defun my-vterm-switch (n)
+  "Switch to vterm buffer N, create if it doesn't exist."
+  (let ((name (format "*vterm-%d*" n)))
+    (if (get-buffer name)
+        (switch-to-buffer name)
+      (vterm name))))
+
+(dotimes (i 5)
+  (let ((n (1+ i)))
+    (eval
+     `(defun ,(intern (format "my-vterm-%d" n)) ()
+        (interactive)
+        (my-vterm-switch ,n)))))
+
+(defvar my-last-non-vterm-buffer nil
+  "Stores the last non-vterm buffer.")
+
+(defun my-toggle-vterm ()
+  "Toggle between last vterm and last non-vterm buffer."
   (interactive)
-  (if (string-match-p "\\*vterm\\*" (buffer-name))
-      (switch-to-buffer nil)
-    (vterm)))
+  (if (derived-mode-p 'vterm-mode)
+      (when (buffer-live-p my-last-non-vterm-buffer)
+        (switch-to-buffer my-last-non-vterm-buffer))
+    (setq my-last-non-vterm-buffer (current-buffer))
+    (let ((vterm-buffer
+           (seq-find
+            #'my--vterm-buffer-p
+            (buffer-list))))
+      (if vterm-buffer
+          (switch-to-buffer vterm-buffer)
+        (my-vterm-1)))))
+
+(defun my--vterm-buffer-p (buf)
+  "Return non-nil if BUF is a vterm buffer."
+  (with-current-buffer buf
+    (derived-mode-p 'vterm-mode)))
+
+(defun my--vterm-number (buf)
+  "Extract numeric suffix from vterm buffer name."
+  (with-current-buffer buf
+    (if (string-match "\\*vterm-\\([0-9]+\\)\\*" (buffer-name))
+        (string-to-number (match-string 1 (buffer-name)))
+      0)))
+
+(defun my--vterm-buffers ()
+  "Return vterm buffers sorted numerically."
+  (seq-sort
+   (lambda (a b)
+     (< (my--vterm-number a)
+        (my--vterm-number b)))
+   (seq-filter #'my--vterm-buffer-p (buffer-list))))
+
+(defun my-vterm-next ()
+  "Switch to next vterm buffer."
+  (interactive)
+  (let* ((buffers (my--vterm-buffers))
+         (current (current-buffer))
+         (pos (cl-position current buffers)))
+    (when buffers
+      (switch-to-buffer
+       (nth (mod (1+ (or pos -1)) (length buffers))
+            buffers)))))
+
+(defun my-vterm-prev ()
+  "Switch to previous vterm buffer."
+  (interactive)
+  (let* ((buffers (my--vterm-buffers))
+         (current (current-buffer))
+         (pos (cl-position current buffers)))
+    (when buffers
+      (switch-to-buffer
+       (nth (mod (1- (or pos 1)) (length buffers))
+            buffers)))))
 
 ;; (use-package combobulate
 ;;   :custom
@@ -548,3 +627,6 @@
   :custom
   (aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
   :bind (("M-o" . 'ace-window)))
+
+(use-package expand-region
+  :bind ("C-=" . er/expand-region))
