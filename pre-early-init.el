@@ -1,6 +1,6 @@
 ;;; pre-early-init.el --- pre-early-init.el -*- no-byte-compile: t; lexical-binding: t; -*-
 
-(setq debug-on-error t)
+;; (setq debug-on-error t)                 ; should on during development
 
 ;;; Reducing clutter in ~/.emacs.d by redirecting files to ~/.emacs.d/var/
 ;; NOTE: This must be placed in 'pre-early-init.el'.
