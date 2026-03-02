@@ -101,6 +101,19 @@
   (tooltip-short-delay 0.08)
   (tooltip-hide-delay 4))
 
+(use-package window
+  :ensure nil
+  :custom
+  (switch-to-buffer-in-dedicated-window 'pop)
+  (switch-to-buffer-obey-display-actions t)
+  :config
+  (add-to-list 'display-buffer-alist
+               '((major-mode . compilation-mode)
+                 (display-buffer-reuse-window display-buffer-in-side-window)
+                 (side . bottom)
+                 (slot . 0)
+                 (window-height . 0.3))))
+
 ;; (use-package server
 ;;   :ensure nil
 ;;   :commands server-start
@@ -127,7 +140,7 @@
 
   (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
   (mapc #'disable-theme custom-enabled-themes)
-  (load-theme 'wombat t)
+  ;; (load-theme 'wombat t)
   (setq-default display-line-numbers-type 'relative)
   (dolist (hook '(prog-mode-hook text-mode-hook conf-mode-hook))
     (add-hook hook #'display-line-numbers-mode))
@@ -170,6 +183,18 @@
       (when args
         (setq dired-listing-switches args))))
   (add-hook 'after-init-hook #'minibuffer-depth-indicate-mode)
+
+  (defun my-backward-kill-word ()
+    (interactive)
+    (if (use-region-p)
+        (kill-region (region-beginning) (region-end))
+      (if (and (> (point) (point-min))
+               (member (char-before) '(?\ ?\t ?\n)))
+          (let ((origin (point)))
+            (skip-chars-backward " \t\n")
+            (kill-region (point) origin))
+        (backward-kill-word 1))))
+  (global-set-key (kbd "C-w") 'my-backward-kill-word)
   )
 
 (use-package corfu
@@ -233,7 +258,7 @@
              embark-prefix-help-command)
   :bind
   (("C-." . embark-act)         ;; pick some comfortable binding
-   ("C-;" . embark-dwim)        ;; good alternative: M-.
+   ("M-." . embark-dwim)        ;; good alternative: M-.
    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
 
   :init
@@ -355,8 +380,8 @@
 
 (use-package undo-fu
   :ensure t
-  :bind (("C-z" . 'undo-fu-only-undo)
-         ("C-S-z" . 'undo-fu-only-redo))
+  :bind (("C-/" . 'undo-fu-only-undo)
+         ("C-S-/" . 'undo-fu-only-redo))
   :init
   (global-unset-key (kbd "C-z")))
 
@@ -417,7 +442,11 @@
 
 (use-package magit
   :commands (magit-status magit-blame)
-  :bind (("C-x g" . magit-status)))
+  :bind (("C-x g" . magit-status))
+  :config
+  (add-to-list 'display-buffer-alist
+               '((major-mode . magit-status-mode)
+                 (display-buffer-full-frame))))
 
 (use-package auto-package-update
   :ensure t
@@ -476,6 +505,7 @@
              avy-goto-char-2
              avy-next)
   :init
+  (global-set-key (kbd "C-=") 'avy-goto-char)
   (global-set-key (kbd "C-'") 'avy-goto-char-2))
 
 (use-package helpful
@@ -561,4 +591,43 @@
   :bind (("M-o" . 'ace-window)))
 
 (use-package expand-region
-  :bind ("C-=" . er/expand-region))
+  :bind ("C-;" . er/expand-region))
+
+(use-package dumb-jump
+  :ensure t
+  :custom
+  (dumb-jump-prefer-searcher 'rg)
+  :config
+  (add-hook 'xref-backend-functions #'dumb-jump-xref-activate))
+
+(use-package doom-modeline
+  :ensure t
+  :custom
+  (doom-modeline-time-icon nil)
+  :init
+  (doom-modeline-mode 1))
+
+(use-package doom-themes
+  :ensure t
+  :custom
+  (doom-themes-enable-bold t)
+  (doom-themes-enable-italic t)
+  :config
+  (load-theme 'doom-one t)
+  ;; (doom-themes-visual-bell-config)
+  (doom-themes-org-config))
+
+(use-package easysession
+  :ensure t
+  :commands (easysession-switch-to
+             easysession-save
+             easysession-save-mode
+             easysession-load-including-geometry)
+  :custom
+  (easysession-mode-line-misc-info t)
+  (easysession-save-interval (* 10 60))
+  :init
+  (global-set-key (kbd "C-c l") 'easysession-switch-to)
+  (global-set-key (kbd "C-c s") 'easysession-save)
+  (add-hook 'emacs-startup-hook #'easysession-load-including-geometry 102)
+  (add-hook 'emacs-startup-hook #'easysession-save-mode 103))
