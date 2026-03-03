@@ -137,7 +137,19 @@
   (compilation-environment (list (concat "PATH=" (getenv "HOME") "/.bun/bin:" (getenv "PATH"))))
   :config
   (global-set-key (kbd "C-x C-r") 'recentf-open-files)
+  (global-set-key (kbd "M-n") 'scroll-up-line)
+  (global-set-key (kbd "M-p") 'scroll-down-line)
+  (global-set-key (kbd "C-M-v") 'scroll-down-line)
+  (defun my-scroll-other-window-up ()
+    (interactive)
+    (scroll-other-window 1))
 
+  (defun my-scroll-other-window-down ()
+    (interactive)
+    (scroll-other-window -1))
+
+  (global-set-key (kbd "C-M-v") 'my-scroll-other-window-up)
+  (global-set-key (kbd "C-M-S-v") 'my-scroll-other-window-down)
   (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
   (mapc #'disable-theme custom-enabled-themes)
   ;; (load-theme 'wombat t)
