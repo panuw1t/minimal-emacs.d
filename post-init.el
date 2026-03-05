@@ -112,7 +112,23 @@
                  (display-buffer-reuse-window display-buffer-in-side-window)
                  (side . bottom)
                  (slot . 0)
-                 (window-height . 0.3))))
+                 (window-height . 0.3)))
+  (add-to-list 'display-buffer-alist
+               '("\\*helpful.*\\*"
+                 (display-buffer-reuse-window display-buffer-in-side-window)
+                 (side . right)
+                 (window-width . 80)))
+  (add-to-list 'display-buffer-alist
+               '("\\.kts?\\'"
+                 (display-buffer-reuse-window
+                  display-buffer-use-some-window
+                  display-buffer-pop-up-window))))
+
+(use-package project
+  :ensure nil
+  :config
+  (add-to-list 'project-switch-commands
+               '(magit-project-status "Magit" ?m)))
 
 ;; (use-package server
 ;;   :ensure nil
@@ -140,6 +156,7 @@
   (global-set-key (kbd "M-n") 'scroll-up-line)
   (global-set-key (kbd "M-p") 'scroll-down-line)
   (global-set-key (kbd "C-M-v") 'scroll-down-line)
+
   (defun my-scroll-other-window-up ()
     (interactive)
     (scroll-other-window 1))
@@ -150,6 +167,9 @@
 
   (global-set-key (kbd "C-M-v") 'my-scroll-other-window-up)
   (global-set-key (kbd "C-M-S-v") 'my-scroll-other-window-down)
+  (global-set-key (kbd "M-[") 'switch-to-prev-buffer)
+  (global-set-key (kbd "M-]") 'switch-to-next-buffer)
+
   (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
   (mapc #'disable-theme custom-enabled-themes)
   ;; (load-theme 'wombat t)
@@ -327,7 +347,7 @@
          ("M-s g" . consult-grep)
          ("M-s G" . consult-git-grep)
          ("M-s r" . consult-ripgrep)
-         ("M-s l" . consult-line)
+         ("C-s" . consult-line)
          ("M-s L" . consult-line-multi)
          ("M-s k" . consult-keep-lines)
          ("M-s u" . consult-focus-lines)
