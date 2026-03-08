@@ -106,6 +106,8 @@
   :custom
   (switch-to-buffer-in-dedicated-window 'pop)
   (switch-to-buffer-obey-display-actions t)
+  (switch-to-prev-buffer-skip-regexp "^\\*\\|^magit")
+  (switch-to-prev-buffer-skip 'this)
   :config
   (add-to-list 'display-buffer-alist
                '((major-mode . compilation-mode)
@@ -156,6 +158,12 @@
   (global-set-key (kbd "M-n") 'scroll-up-line)
   (global-set-key (kbd "M-p") 'scroll-down-line)
   (global-set-key (kbd "C-M-v") 'scroll-down-line)
+  (global-set-key (kbd "M-/") 'dabbrev-completion)
+  (global-set-key (kbd "C-c u") 'winner-undo)
+  (global-set-key (kbd "C-c r") 'winner-redo)
+  (with-eval-after-load 'winner
+    (define-key winner-repeat-map (kbd "u") #'winner-undo)
+    (define-key winner-repeat-map (kbd "r") #'winner-redo))
 
   (defun my-scroll-other-window-up ()
     (interactive)
@@ -171,7 +179,7 @@
   (global-set-key (kbd "M-]") 'switch-to-next-buffer)
 
   (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
-  (mapc #'disable-theme custom-enabled-themes)
+  ;; (mapc #'disable-theme custom-enabled-themes)
   ;; (load-theme 'wombat t)
   (setq-default display-line-numbers-type 'relative)
   (dolist (hook '(prog-mode-hook text-mode-hook conf-mode-hook))
@@ -189,6 +197,7 @@
     (setq pixel-scroll-precision-use-momentum nil) ; Precise/smoother scrolling
     (pixel-scroll-precision-mode 1))
 
+  (add-hook 'after-init-hook #'repeat-mode)
   (add-hook 'after-init-hook #'display-time-mode)
   (add-hook 'after-init-hook #'show-paren-mode)
   (add-hook 'after-init-hook #'winner-mode)
@@ -413,7 +422,7 @@
 (use-package undo-fu
   :ensure t
   :bind (("C-/" . 'undo-fu-only-undo)
-         ("C-S-/" . 'undo-fu-only-redo))
+         ("C-M-/" . 'undo-fu-only-redo))
   :init
   (global-unset-key (kbd "C-z")))
 
@@ -651,15 +660,34 @@
 
 (use-package easysession
   :ensure t
+  :demand t
   :commands (easysession-switch-to
              easysession-save
              easysession-save-mode
              easysession-load-including-geometry)
   :custom
   (easysession-mode-line-misc-info t)
-  (easysession-save-interval (* 10 60))
-  :init
+  (easysession-switch-to-save-session nil)
+  :config
   (global-set-key (kbd "C-c l") 'easysession-switch-to)
   (global-set-key (kbd "C-c s") 'easysession-save)
-  (add-hook 'emacs-startup-hook #'easysession-load-including-geometry 102)
-  (add-hook 'emacs-startup-hook #'easysession-save-mode 103))
+  (setq easysession-setup-load-session nil))
+
+(use-package better-jumper
+  :ensure t
+  :commands (better-jumper-jump-backward
+             better-jumper-jump-forward
+             better-jumper-set-jump)
+  :bind (("C-o" . better-jumper-jump-backward)
+         ("C-M-o" . better-jumper-jump-forward))
+  :init
+  (defun my/better-jumper-set-jump (&rest _)
+    (better-jumper-set-jump))
+  (advice-add 'xref-find-definitions :before #'my/better-jumper-set-jump)
+  (advice-add 'xref-find-references :before #'my/better-jumper-set-jump)
+  (advice-add 'consult-line :before #'my/better-jumper-set-jump)
+  (advice-add 'consult-imenu :before #'my/better-jumper-set-jump)
+  (advice-add 'consult-buffer :before #'my/better-jumper-set-jump)
+  (advice-add 'project-find-file :before #'my/better-jumper-set-jump)
+  :config
+  (better-jumper-mode 1))
