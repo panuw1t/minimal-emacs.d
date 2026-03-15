@@ -119,18 +119,18 @@
                '("\\*helpful.*\\*"
                  (display-buffer-reuse-window display-buffer-in-side-window)
                  (side . right)
-                 (window-width . 80)))
-  (add-to-list 'display-buffer-alist
-               '("\\.kts?\\'"
-                 (display-buffer-reuse-window
-                  display-buffer-use-some-window
-                  display-buffer-pop-up-window))))
+                 (window-width . 80))))
 
 (use-package project
   :ensure nil
+  :custom
+  (project-compilation-buffer-name-function
+   (lambda (mode) (format "*compilation-%s*" (project-name (project-current)))))
   :config
   (add-to-list 'project-switch-commands
-               '(magit-project-status "Magit" ?m)))
+               '(magit-project-status "Magit" ?m))
+  (add-to-list 'project-switch-commands
+               '(project-compile "compile" ?c)))
 
 ;; (use-package server
 ;;   :ensure nil
@@ -266,13 +266,38 @@
 
 (use-package vertico
   :ensure t
-  ;; :custom
+  :custom
   ;; (vertico-scroll-margin 0) ;; Different scroll margin
   ;; (vertico-count 20) ;; Show more candidates
   ;; (vertico-resize t) ;; Grow and shrink the Vertico minibuffer
-  ;; (vertico-cycle t) ;; Enable cycling for `vertico-next/previous'
+  (vertico-cycle t) ;; Enable cycling for `vertico-next/previous'
+  :bind
+  (:map vertico-map
+        ("C-M-n" . vertico-next-group)
+        ("C-M-p" . vertico-previous-group))
   :config
-  (vertico-mode))
+  (vertico-mode)
+  (vertico-multiform-mode)
+  (setq vertico-multiform-commands
+        '((consult-imenu buffer indexed)
+          (execute-extended-command unobtrusive)
+          (consult-buffer reverse)))
+  (setq vertico-multiform-categories
+        '((consult-grep buffer)
+          (consult-location buffer)))
+  (setq vertico-buffer-display-action
+        '(display-buffer-in-side-window
+          (side . right)
+          (window-width . 0.5))))
+
+(use-package vertico-directory
+  :after vertico
+  :ensure nil
+  :bind (:map vertico-map
+              ("RET" . vertico-directory-enter)
+              ("DEL" . vertico-directory-delete-char)
+              ("M-DEL" . vertico-directory-delete-word))
+  :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
 
 (use-package orderless
   :ensure t
@@ -400,6 +425,7 @@
 
   :config
   (consult-customize
+   consult-line :initial (thing-at-point 'symbol)
    consult-theme :preview-key '(:debounce 0.2 any)
    consult-ripgrep consult-git-grep consult-grep
    consult-bookmark consult-recent-file consult-xref
