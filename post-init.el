@@ -266,6 +266,8 @@
 
 (use-package vertico
   :ensure t
+  :init
+  (vertico-mode)
   :custom
   ;; (vertico-scroll-margin 0) ;; Different scroll margin
   ;; (vertico-count 20) ;; Show more candidates
@@ -276,7 +278,6 @@
         ("C-M-n" . vertico-next-group)
         ("C-M-p" . vertico-previous-group))
   :config
-  (vertico-mode)
   (vertico-multiform-mode)
   (setq vertico-multiform-commands
         '((consult-imenu buffer indexed)
