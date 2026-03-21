@@ -281,7 +281,6 @@
   (vertico-multiform-mode)
   (setq vertico-multiform-commands
         '((consult-imenu buffer indexed)
-          (execute-extended-command unobtrusive)
           (consult-buffer reverse)))
   (setq vertico-multiform-categories
         '((consult-grep buffer)
@@ -345,6 +344,17 @@
 
 (use-package consult
   :ensure t
+  :custom
+  (consult-buffer-sources
+   '(consult-source-buffer
+     consult-source-hidden-buffer
+     consult-source-modified-buffer
+     consult-source-other-buffer
+     consult-source-buffer-register
+     consult-source-file-register consult-source-bookmark
+     consult-source-project-buffer-hidden
+     consult-source-project-recent-file-hidden
+     consult-source-project-root-hidden))
   :bind (;; C-c bindings in `mode-specific-map'
          ("C-c M-x" . consult-mode-command)
          ("C-c h" . consult-history)
@@ -426,7 +436,10 @@
 
   :config
   (consult-customize
-   consult-line :initial (thing-at-point 'symbol)
+   consult-line  :initial (when (use-region-p)
+                            (buffer-substring-no-properties
+                             (region-beginning)
+                             (region-end)))
    consult-theme :preview-key '(:debounce 0.2 any)
    consult-ripgrep consult-git-grep consult-grep
    consult-bookmark consult-recent-file consult-xref
@@ -698,7 +711,36 @@
   :config
   (global-set-key (kbd "C-c l") 'easysession-switch-to)
   (global-set-key (kbd "C-c s") 'easysession-save)
-  (setq easysession-setup-load-session nil))
+  (setq easysession-setup-load-session nil)
+  (easysession-define-handler
+    "eww"
+    (lambda (session-data)
+      (dolist (item session-data)
+        (let* ((buffer-name (car item))
+               (data (cdr item))
+               (url (alist-get 'url data))
+               (point-pos (alist-get 'point data)))
+          (when (and url (string-match "\\*eww\\*" buffer-name))
+            (eww url)
+            (when point-pos
+              ;; wait until page is rendered
+              (add-hook
+               'eww-after-render-hook
+               (lambda ()
+                 (goto-char (min point-pos (point-max))))
+               ;; append, local
+               nil t))))))
+    (lambda (buffers)
+      (easysession-save-handler-dolist-buffers
+        buffers
+        (when (derived-mode-p 'eww-mode)
+          (let ((url (or (and (boundp 'eww-current-url) eww-current-url)
+                         (plist-get eww-data :url))))
+            (when url
+              (cons (buffer-name)
+                    (list
+                     (cons 'url url)
+                     (cons 'point (point)))))))))))
 
 (use-package better-jumper
   :ensure t
