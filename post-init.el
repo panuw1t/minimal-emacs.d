@@ -13,6 +13,7 @@
   (push "/pre-early-init.el" compile-angel-excluded-files)
   (push "/post-early-init.el" compile-angel-excluded-files)
   (push "/lisp/toggle-vterm.el" compile-angel-excluded-files)
+  (push "/lisp/my-isearch.el" compile-angel-excluded-files)
   (compile-angel-on-load-mode 1))
 
 (use-package autorevert
@@ -236,7 +237,16 @@
             (kill-region (point) origin))
         (backward-kill-word 1))))
   (global-set-key (kbd "C-w") 'my-backward-kill-word)
+  (add-to-list 'load-path (expand-file-name "lisp/" minimal-emacs-user-directory))
   )
+
+(use-package my-isearch
+  :ensure nil
+  :after isearch
+  :bind (:map isearch-mode-map
+              ("C-g" . my-isearch-abort-dwim)
+              ("C-s" . my-isearch-switch-to-forward)
+              ("C-r" . my-isearch-switch-to-backward)))
 
 (use-package corfu
   :ensure t
@@ -392,7 +402,7 @@
          ("M-s g" . consult-grep)
          ("M-s G" . consult-git-grep)
          ("M-s r" . consult-ripgrep)
-         ("C-s" . consult-line)
+         ("M-s l" . consult-line)
          ("M-s L" . consult-line-multi)
          ("M-s k" . consult-keep-lines)
          ("M-s u" . consult-focus-lines)
@@ -401,7 +411,6 @@
          :map isearch-mode-map
          ("M-e" . consult-isearch-history)
          ("M-s e" . consult-isearch-history)
-         ("M-s l" . consult-line)
          ("M-s L" . consult-line-multi)
          ;; Minibuffer history
          :map minibuffer-local-map
@@ -655,7 +664,6 @@
 
 (use-package toggle-vterm
   :ensure nil
-  :load-path (lambda () (expand-file-name "lisp/" minimal-emacs-user-directory))
   :after vterm)
 
 ;; (use-package combobulate
