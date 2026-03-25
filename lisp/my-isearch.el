@@ -61,5 +61,17 @@ The region is deactivated after starting the search."
     (when search-string
       (isearch-yank-string search-string))))
 
+(defun my-isearch-backward-region-or-word ()
+  "Start `isearch-backward`. If a region is active, use its text as the initial search string.
+The region is deactivated after starting the search."
+  (interactive)
+  (let ((search-string (when (use-region-p)
+                         (prog1
+                             (buffer-substring-no-properties (region-beginning) (region-end))
+                           (deactivate-mark))))) ; deactivate region
+    (isearch-backward nil 1)
+    (when search-string
+      (isearch-yank-string search-string))))
+
 (provide 'my-isearch)
 ;;; my-isearch.el ends here
