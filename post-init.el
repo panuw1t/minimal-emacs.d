@@ -1,5 +1,7 @@
 ;;; post-init.el --- load before init.el -*- no-byte-compile: t; lexical-binding: t; -*-
 
+(defvar my-leader-map (make-sparse-keymap))
+
 (use-package compile-angel
   :demand t
   :ensure t
@@ -155,6 +157,7 @@
   (confirm-kill-emacs 'y-or-n-p)
   (compilation-environment (list (concat "PATH=" (getenv "HOME") "/.bun/bin:" (getenv "PATH"))))
   :config
+  (define-key global-map (kbd "C-,") my-leader-map)
   (global-set-key (kbd "C-x C-r") 'recentf-open-files)
   (global-set-key (kbd "M-n") 'scroll-up-line)
   (global-set-key (kbd "M-p") 'scroll-down-line)
@@ -243,7 +246,9 @@
 (use-package my-isearch
   :ensure nil
   :after isearch
-  :bind (:map isearch-mode-map
+  :bind (("C-r" . my-isearch-backward-region-or-word)
+         ("C-s" . my-isearch-forward-region-or-word)
+         :map isearch-mode-map
               ("C-g" . my-isearch-abort-dwim)
               ("C-s" . my-isearch-switch-to-forward)
               ("C-r" . my-isearch-switch-to-backward)))
@@ -415,7 +420,9 @@
          ;; Minibuffer history
          :map minibuffer-local-map
          ("M-s" . consult-history)
-         ("M-r" . consult-history))
+         ("M-r" . consult-history)
+         :map my-leader-map
+         ("SPC" . consult-buffer))
 
   ;; Enable automatic preview at point in the *Completions* buffer.
   :hook (completion-list-mode . consult-preview-at-point-mode)
