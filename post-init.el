@@ -77,7 +77,9 @@
   (which-key-idle-delay 1.5)
   (which-key-idle-secondary-delay 0.25)
   (which-key-add-column-padding 1)
-  (which-key-max-description-length 40))
+  (which-key-max-description-length 40)
+  :config
+  (which-key-setup-side-window-right-bottom))
 
 (use-package compile
   :ensure nil
@@ -129,6 +131,10 @@
   :custom
   (project-compilation-buffer-name-function
    (lambda (mode) (format "*compilation-%s*" (project-name (project-current)))))
+  :bind (:map my-leader-map
+              ("f" . project-find-file)
+              ("c" . project-compile)
+              ("p" . project-switch-project))
   :config
   (add-to-list 'project-switch-commands
                '(magit-project-status "Magit" ?m))
@@ -451,6 +457,7 @@
   ;;       consult-async-refresh-delay 0.02)
 
   :config
+  (add-to-list 'consult-buffer-filter "\\*vterm")
   (consult-customize
    consult-line  :initial (when (use-region-p)
                             (buffer-substring-no-properties
@@ -759,6 +766,8 @@
 
 (use-package better-jumper
   :ensure t
+  :custom
+  (better-jumper-add-jump-behavior 'replace)
   :commands (better-jumper-jump-backward
              better-jumper-jump-forward
              better-jumper-set-jump)
