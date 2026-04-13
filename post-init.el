@@ -164,7 +164,7 @@
   (compilation-environment (list (concat "PATH=" (getenv "HOME") "/.bun/bin:" (getenv "PATH"))))
   :config
   (define-key global-map (kbd "C-,") my-leader-map)
-  (global-set-key (kbd "C-x C-r") 'recentf-open-files)
+  ;; (global-set-key (kbd "C-x C-r") 'recentf-open-files)
   (global-set-key (kbd "M-n") 'scroll-up-line)
   (global-set-key (kbd "M-p") 'scroll-down-line)
   (global-set-key (kbd "C-M-v") 'scroll-down-line)
@@ -782,5 +782,25 @@
   (advice-add 'consult-imenu :before #'my/better-jumper-set-jump)
   (advice-add 'consult-buffer :before #'my/better-jumper-set-jump)
   (advice-add 'project-find-file :before #'my/better-jumper-set-jump)
+  (advice-add 'consult-grep :before #'my/better-jumper-set-jump)
+  (advice-add 'consult-ripgrep :before #'my/better-jumper-set-jump)
   :config
   (better-jumper-mode 1))
+
+(use-package crux
+  :ensure t
+  :bind (("C-c o" . crux-open-with)
+         ("C-k" . crux-smart-kill-line)
+         ("S-<return>" . crux-smart-open-line)
+         ("S-C-<return>" . crux-smart-open-line-above)
+         ("C-x C-r" . crux-recentf-find-file)
+         ("C-c F" . crux-recentf-find-directory)
+         ("C-c U" . crux-view-url)
+         ("C-c e" . crux-eval-and-replace)
+         ("C-x 4 t" . crux-transpose-windows)
+         ("C-c D" . crux-delete-file-and-buffer)
+         ("C-c d" . crux-duplicate-current-line-or-region)
+         ("C-^" . crux-top-join-line)
+         ("C-c b" . crux-switch-to-previous-buffer)
+         ([remap move-beginning-of-line] . crux-move-beginning-of-line)
+         ([remap keyboard-quit] . crux-keyboard-quit-dwim)))
