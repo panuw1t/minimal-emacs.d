@@ -108,6 +108,8 @@
 
 (use-package window
   :ensure nil
+  :bind (:map my-leader-map
+              ("s" . window-toggle-side-windows))
   :custom
   (switch-to-buffer-in-dedicated-window 'pop)
   (switch-to-buffer-obey-display-actions t)
@@ -134,6 +136,7 @@
   :bind (:map my-leader-map
               ("f" . project-find-file)
               ("c" . project-compile)
+              ("r" . project-recompile)
               ("p" . project-switch-project))
   :config
   (add-to-list 'project-switch-commands
@@ -366,6 +369,11 @@
 (use-package consult
   :ensure t
   :custom
+  (consult-fd-args (list (if (executable-find "fdfind" 'remote) "fdfind" "fd")
+                         "--type" "f"
+                         "--hidden"
+                         "--no-ignore"
+                         "--color=never"))
   (consult-buffer-sources
    '(consult-source-buffer
      consult-source-hidden-buffer
@@ -428,6 +436,7 @@
          ("M-s" . consult-history)
          ("M-r" . consult-history)
          :map my-leader-map
+         ("a" . consult-fd)
          ("SPC" . consult-buffer))
 
   ;; Enable automatic preview at point in the *Completions* buffer.
@@ -802,5 +811,10 @@
          ("C-c d" . crux-duplicate-current-line-or-region)
          ("C-^" . crux-top-join-line)
          ("C-c b" . crux-switch-to-previous-buffer)
-         ([remap move-beginning-of-line] . crux-move-beginning-of-line)
-         ([remap keyboard-quit] . crux-keyboard-quit-dwim)))
+         ([remap move-beginning-of-line] . crux-move-beginning-of-line)))
+
+(use-package diff-hl
+  :ensure t
+  :config
+  (global-diff-hl-mode)
+  (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh))
