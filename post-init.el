@@ -108,8 +108,6 @@
 
 (use-package window
   :ensure nil
-  :bind (:map my-leader-map
-              ("s" . window-toggle-side-windows))
   :custom
   (switch-to-buffer-in-dedicated-window 'pop)
   (switch-to-buffer-obey-display-actions t)
@@ -142,7 +140,17 @@
   (add-to-list 'project-switch-commands
                '(magit-project-status "Magit" ?m))
   (add-to-list 'project-switch-commands
-               '(project-compile "compile" ?c)))
+               '(project-compile "compile" ?c))
+  (defun my-toggle-project-compilation-buffer ()
+    "Show or hide the current project's compilation buffer without moving focus."
+    (interactive)
+    (when-let* ((pr (project-current))
+                (buff-name (format "*compilation-%s*" (project-name pr)))
+                (target (get-buffer buff-name)))
+      (if-let ((window (get-buffer-window target)))
+          (delete-window window)
+        (display-buffer target))))
+  (keymap-set my-leader-map "s" #'my-toggle-project-compilation-buffer))
 
 ;; (use-package server
 ;;   :ensure nil
@@ -250,6 +258,7 @@
         (backward-kill-word 1))))
   (global-set-key (kbd "C-w") 'my-backward-kill-word)
   (add-to-list 'load-path (expand-file-name "lisp/" minimal-emacs-user-directory))
+  (global-set-key (kbd "C-c w") ctl-x-4-map)
   )
 
 (use-package my-isearch
