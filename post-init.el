@@ -83,6 +83,9 @@
 
 (use-package compile
   :ensure nil
+  :bind (:map compilation-mode-map
+              ("n" . next-error)
+              ("p" . previous-error))
   :config
   (setf (alist-get 'gradle-kotlin compilation-error-regexp-alist-alist)
         '("^e: file://\\([^:]+\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3)))
@@ -518,10 +521,44 @@
   :ensure nil
   :commands (eglot-ensure
              eglot-rename
-             eglot-format-buffer)
+             eglot-format-buffer
+             my-eglot-kotlin)
   :config
   (setf (alist-get '(kotlin-mode kotlin-ts-mode) eglot-server-programs nil nil #'equal)
-        '("127.0.0.1" 9999)))
+        '("127.0.0.1" 9999))
+  (defun my-kotlin-lsp-running-p ()
+    (if (executable-find "nc")
+        (eq 0 (call-process "nc" nil nil nil "-z" "127.0.0.1" "9999"))
+      (error "nc (netcat) is not installed")))
+
+
+  (defun my-kotlin-lsp-start ()
+    (start-process-shell-command
+     "kotlin-lsp"
+     "*kotlin-lsp*"
+     (format "%s --multi-client"
+             (executable-find "kotlin-lsp"))))
+
+  (defun my-kotlin-wait-and-start-eglot (&optional retries)
+    (let ((retries (or retries 10)))
+      (when (> retries 0)
+        (run-at-time
+         2.0 nil
+         (lambda ()
+           (if (my-kotlin-lsp-running-p)
+               (progn
+                 (message "Kotlin LSP ready")
+                 (eglot-ensure))
+             (my-kotlin-wait-and-start-eglot (1- retries))))))))
+
+  (defun my-eglot-kotlin ()
+    (interactive)
+    (if (my-kotlin-lsp-running-p)
+        (eglot-ensure)
+      (progn
+        (message "Starting Kotlin LSP...")
+        (my-kotlin-lsp-start)
+        (my-kotlin-wait-and-start-eglot)))))
 
 (use-package org
   :ensure nil
