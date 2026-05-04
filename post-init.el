@@ -178,6 +178,7 @@
   (compilation-environment (list (concat "PATH=" (getenv "HOME") "/.bun/bin:" (getenv "PATH"))))
   :config
   (define-key global-map (kbd "C-,") my-leader-map)
+  (define-key my-leader-map (kbd "u") 'revert-buffer)
   ;; (global-set-key (kbd "C-x C-r") 'recentf-open-files)
   (global-set-key (kbd "M-n") 'scroll-up-line)
   (global-set-key (kbd "M-p") 'scroll-down-line)
@@ -291,7 +292,7 @@
 
 (use-package cape
   :ensure t
-  :commands (cape-dabbrev cape-file cape-elisp-block)
+  :commands (cape-dabbrev cape-file cape-elisp-block cape-capf-trigger)
   :bind ("C-c p" . cape-prefix-map)
   :init
   ;; Add to the global default value of `completion-at-point-functions' which is
@@ -684,30 +685,30 @@
   :custom
   (helpful-max-buffers 7))
 
-(use-package yasnippet-snippets
-  :ensure t
-  :after yasnippet)
-
-(use-package yasnippet                  ; alternative https://github.com/minad/tempel
-  :ensure t
-  :commands (yas-minor-mode
-             yas-global-mode)
-
-  :hook
-  (after-init . yas-global-mode)
-
-  :custom
-  (yas-also-auto-indent-first-line t)  ; Indent first line of snippet
-  (yas-also-indent-empty-lines t)
-  (yas-snippet-revival nil)  ; Setting this to t causes issues with undo
-  (yas-wrap-around-region nil) ; Do not wrap region when expanding snippets
-  ;; (yas-triggers-in-field nil)  ; Disable nested snippet expansion
-  ;; (yas-indent-line 'fixed) ; Do not auto-indent snippet content
-  ;; (yas-prompt-functions '(yas-no-prompt))  ; No prompt for snippet choices
-
-  :init
-  ;; Suppress verbose messages
-  (setq yas-verbosity 0))
+;; (use-package yasnippet-snippets
+;;   :ensure t
+;;   :after yasnippet)
+;;
+;; (use-package yasnippet                  ; alternative https://github.com/minad/tempel
+;;   :ensure t
+;;   :commands (yas-minor-mode
+;;              yas-global-mode)
+;;
+;;   :hook
+;;   (after-init . yas-global-mode)
+;;
+;;   :custom
+;;   (yas-also-auto-indent-first-line t)  ; Indent first line of snippet
+;;   (yas-also-indent-empty-lines t)
+;;   (yas-snippet-revival nil)  ; Setting this to t causes issues with undo
+;;   (yas-wrap-around-region nil) ; Do not wrap region when expanding snippets
+;;   ;; (yas-triggers-in-field nil)  ; Disable nested snippet expansion
+;;   ;; (yas-indent-line 'fixed) ; Do not auto-indent snippet content
+;;   ;; (yas-prompt-functions '(yas-no-prompt))  ; No prompt for snippet choices
+;;
+;;   :init
+;;   ;; Suppress verbose messages
+;;   (setq yas-verbosity 0))
 
 (use-package persist-text-scale
   :commands (persist-text-scale-mode
@@ -829,16 +830,20 @@
   :bind (("C-o" . better-jumper-jump-backward)
          ("C-M-o" . better-jumper-jump-forward))
   :init
-  (defun my/better-jumper-set-jump (&rest _)
+  (defun my-better-jumper-set-jump (&rest _)
     (better-jumper-set-jump))
-  (advice-add 'xref-find-definitions :before #'my/better-jumper-set-jump)
-  (advice-add 'xref-find-references :before #'my/better-jumper-set-jump)
-  (advice-add 'consult-line :before #'my/better-jumper-set-jump)
-  (advice-add 'consult-imenu :before #'my/better-jumper-set-jump)
-  (advice-add 'consult-buffer :before #'my/better-jumper-set-jump)
-  (advice-add 'project-find-file :before #'my/better-jumper-set-jump)
-  (advice-add 'consult-grep :before #'my/better-jumper-set-jump)
-  (advice-add 'consult-ripgrep :before #'my/better-jumper-set-jump)
+  (advice-add 'xref-find-definitions :before #'my-better-jumper-set-jump)
+  (advice-add 'xref-find-references :before #'my-better-jumper-set-jump)
+  (advice-add 'consult-line :before #'my-better-jumper-set-jump)
+  (advice-add 'consult-imenu :before #'my-better-jumper-set-jump)
+  (advice-add 'consult-buffer :before #'my-better-jumper-set-jump)
+  (advice-add 'project-find-file :before #'my-better-jumper-set-jump)
+  (advice-add 'consult-grep :before #'my-better-jumper-set-jump)
+  (advice-add 'consult-ripgrep :before #'my-better-jumper-set-jump)
+  (advice-add 'my-isearch-forward-region-or-word :before #'my-better-jumper-set-jump)
+  (advice-add 'my-isearch-backward-region-or-word :before #'my-better-jumper-set-jump)
+  (advice-add 'begin-of-buffer :before #'my-better-jumper-set-jump)
+  (advice-add 'end-of-buffer :before #'my-better-jumper-set-jump)
   :config
   (better-jumper-mode 1))
 
@@ -864,3 +869,37 @@
   :config
   (global-diff-hl-mode)
   (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh))
+
+(use-package tempel
+  :ensure t
+  :bind (("M-+" . tempel-complete)
+         ("M-*" . tempel-insert)
+         :map tempel-map
+         ("TAB" . tempel-next)
+         ("<tab>" . tempel-next)
+         ("S-TAB" . tempel-previous)
+         ("<backtab>" . tempel-previous))
+
+  :init
+  (defun tempel-setup-capf ()
+    (setq-local corfu-auto-trigger "/"
+                completion-at-point-functions
+                (cons (cape-capf-trigger #'tempel-complete ?/)
+                      completion-at-point-functions)))
+
+  (add-hook 'prog-mode-hook #'tempel-setup-capf)
+  (add-hook 'text-mode-hook #'tempel-setup-capf)
+  (add-hook 'conf-mode-hook #'tempel-setup-capf))
+
+(use-package tempel-collection
+  :ensure t
+  :after tempel)
+
+(use-package kind-icon
+  :ensure t
+  :after corfu
+  ;:custom
+  ; (kind-icon-blend-background t)
+  ; (kind-icon-default-face 'corfu-default) ; only needed with blend-background
+  :config
+  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
