@@ -77,7 +77,6 @@
   (which-key-idle-delay 1.5)
   (which-key-idle-secondary-delay 0.25)
   (which-key-add-column-padding 1)
-  (which-key-max-description-length 40)
   :config
   (which-key-setup-side-window-right-bottom))
 
@@ -181,6 +180,7 @@
   (define-key my-leader-map (kbd "u") 'revert-buffer)
   ;; (global-set-key (kbd "C-x C-r") 'recentf-open-files)
   (global-set-key (kbd "M-n") 'scroll-up-line)
+  (global-set-key (kbd "M-RET") 'exchange-point-and-mark)
   (global-set-key (kbd "M-p") 'scroll-down-line)
   (global-set-key (kbd "C-M-v") 'scroll-down-line)
   (global-set-key (kbd "M-/") 'dabbrev-completion)
@@ -844,6 +844,7 @@
   (advice-add 'my-isearch-backward-region-or-word :before #'my-better-jumper-set-jump)
   (advice-add 'begin-of-buffer :before #'my-better-jumper-set-jump)
   (advice-add 'end-of-buffer :before #'my-better-jumper-set-jump)
+  (advice-add 'backward-up-list :before #'my-better-jumper-set-jump)
   :config
   (better-jumper-mode 1))
 
