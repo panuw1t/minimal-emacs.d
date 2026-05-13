@@ -288,7 +288,17 @@
   (text-mode-ispell-word-completion nil)
   (tab-always-indent 'complete)
   :config
-  (global-corfu-mode))
+  (global-corfu-mode)
+  (corfu-popupinfo-mode)
+  (defun corfu-move-to-minibuffer ()
+    (interactive)
+    (pcase completion-in-region--data
+      (`(,beg ,end ,table ,pred ,extras)
+       (let ((completion-extra-properties extras)
+             completion-cycle-threshold completion-cycling)
+         (consult-completion-in-region beg end table pred)))))
+  (keymap-set corfu-map "M-m" #'corfu-move-to-minibuffer)
+  (add-to-list 'corfu-continue-commands #'corfu-move-to-minibuffer))
 
 (use-package cape
   :ensure t
@@ -575,7 +585,9 @@
   ;; (org-fontify-todo-headline t)
   ;; (org-fontify-whole-heading-line t)
   ;; (org-fontify-quote-and-verse-blocks t)
-  (org-startup-truncated t))
+  (org-startup-truncated t)
+  :config
+  (define-key org-mode-map (kbd "C-,") nil))
 
 (use-package treesit-auto
   :ensure t
@@ -657,7 +669,8 @@
 
   ;; Remove doc from Flyspell
   (setq flyspell-prog-text-faces (delq 'font-lock-doc-face
-                                       flyspell-prog-text-faces)))
+                                       flyspell-prog-text-faces))
+  (define-key flyspell-mode-map (kbd "C-,") nil))
 
 (use-package avy
   :ensure t
