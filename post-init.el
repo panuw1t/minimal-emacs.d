@@ -460,6 +460,7 @@
          ("M-r" . consult-history)
          :map my-leader-map
          ("a" . consult-fd)
+         ("C-SPC" . consult-buffer)
          ("SPC" . consult-buffer))
 
   ;; Enable automatic preview at point in the *Completions* buffer.
@@ -841,7 +842,7 @@
              better-jumper-jump-forward
              better-jumper-set-jump)
   :bind (("C-o" . better-jumper-jump-backward)
-         ("C-M-o" . better-jumper-jump-forward))
+         ("C-j" . better-jumper-jump-forward))
   :init
   (defun my-better-jumper-set-jump (&rest _)
     (better-jumper-set-jump))
@@ -912,7 +913,8 @@
 (use-package kind-icon
   :ensure t
   :after corfu
-  ;:custom
+  :custom
+  (kind-icon-use-icons nil)
   ; (kind-icon-blend-background t)
   ; (kind-icon-default-face 'corfu-default) ; only needed with blend-background
   :config
