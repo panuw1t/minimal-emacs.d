@@ -16,6 +16,7 @@
   (push "/post-early-init.el" compile-angel-excluded-files)
   (push "/lisp/toggle-vterm.el" compile-angel-excluded-files)
   (push "/lisp/my-isearch.el" compile-angel-excluded-files)
+  (push "/lisp/my-embark.el" compile-angel-excluded-files)
   (compile-angel-on-load-mode 1))
 
 (use-package autorevert
@@ -135,24 +136,13 @@
    (lambda (mode) (format "*compilation-%s*" (project-name (project-current)))))
   :bind (:map my-leader-map
               ("f" . project-find-file)
-              ("c" . project-compile)
               ("r" . project-recompile)
               ("p" . project-switch-project))
   :config
   (add-to-list 'project-switch-commands
                '(magit-project-status "Magit" ?m))
   (add-to-list 'project-switch-commands
-               '(project-compile "compile" ?c))
-  (defun my-toggle-project-compilation-buffer ()
-    "Show or hide the current project's compilation buffer without moving focus."
-    (interactive)
-    (when-let* ((pr (project-current))
-                (buff-name (format "*compilation-%s*" (project-name pr)))
-                (target (get-buffer buff-name)))
-      (if-let ((window (get-buffer-window target)))
-          (delete-window window)
-        (display-buffer target))))
-  (keymap-set my-leader-map "s" #'my-toggle-project-compilation-buffer))
+               '(project-compile "compile" ?c)))
 
 ;; (use-package server
 ;;   :ensure nil
@@ -172,7 +162,6 @@
   (column-number-mode t)
   (mode-line-position-column-line-format '("%l:%C"))
   (treesit-font-lock-level 4)
-  (dired-movement-style 'bounded-files)
   (confirm-kill-emacs 'y-or-n-p)
   (compilation-environment (list (concat "PATH=" (getenv "HOME") "/.bun/bin:" (getenv "PATH"))))
   :config
@@ -227,6 +216,54 @@
   (add-hook 'after-init-hook #'show-paren-mode)
   (add-hook 'after-init-hook #'winner-mode)
   (add-hook 'after-init-hook #'window-divider-mode)
+  (add-hook 'after-init-hook #'minibuffer-depth-indicate-mode)
+
+  (defun my-backward-kill-word ()
+    (interactive)
+    (if (use-region-p)
+        (kill-region (region-beginning) (region-end))
+      (if (and (> (point) (point-min))
+               (member (char-before) '(?\ ?\t ?\n)))
+          (let ((origin (point)))
+            (skip-chars-backward " \t\n")
+            (kill-region (point) origin))
+        (backward-kill-word 1))))
+  (global-set-key (kbd "C-w") 'my-backward-kill-word)
+  (add-to-list 'load-path (expand-file-name "lisp/" minimal-emacs-user-directory))
+  (global-set-key (kbd "C-c w") ctl-x-4-map)
+
+  (defun my-dwim-compile ()
+  "Run `compile' if no project is found, otherwise run `project-compile'."
+  (interactive)
+  (if (project-current)
+      (project-compile)
+    (call-interactively #'compile)))
+  (keymap-set my-leader-map "c" #'my-dwim-compile)
+
+  (defun my-toggle-project-compilation-buffer ()
+    "Show or hide the current project's compilation buffer,
+or the default '*compilation*' buffer if no project is active."
+    (interactive)
+    (let* ((pr (project-current))
+           (buff-name (if pr
+                          (format "*compilation-%s*" (project-name pr))
+                        "*compilation*"))
+           (target (get-buffer buff-name)))
+
+      (if target
+          (if-let ((window (get-buffer-window target)))
+              (delete-window window)
+            (display-buffer target))
+        (message "No compilation buffer found for this context."))))
+  (keymap-set my-leader-map "s" #'my-toggle-project-compilation-buffer))
+
+(use-package dired
+  :ensure nil
+  :bind (:map dired-mode-map
+              (";" . dired-do-shell-command))
+  :custom
+  (dired-movement-style 'bounded-files)
+  :config
   (add-hook 'dired-mode-hook #'dired-hide-details-mode)
   (setq dired-omit-files (concat "\\`[.]\\'"
                                  "\\|\\(?:\\.js\\)?\\.meta\\'"
@@ -247,23 +284,7 @@
             (setq insert-directory-program gls)
           (setq args nil)))
       (when args
-        (setq dired-listing-switches args))))
-  (add-hook 'after-init-hook #'minibuffer-depth-indicate-mode)
-
-  (defun my-backward-kill-word ()
-    (interactive)
-    (if (use-region-p)
-        (kill-region (region-beginning) (region-end))
-      (if (and (> (point) (point-min))
-               (member (char-before) '(?\ ?\t ?\n)))
-          (let ((origin (point)))
-            (skip-chars-backward " \t\n")
-            (kill-region (point) origin))
-        (backward-kill-word 1))))
-  (global-set-key (kbd "C-w") 'my-backward-kill-word)
-  (add-to-list 'load-path (expand-file-name "lisp/" minimal-emacs-user-directory))
-  (global-set-key (kbd "C-c w") ctl-x-4-map)
-  )
+        (setq dired-listing-switches args)))))
 
 (use-package my-isearch
   :ensure nil
@@ -325,6 +346,7 @@
         ("C-M-n" . vertico-next-group)
         ("C-M-p" . vertico-previous-group))
   :config
+  (vertico-indexed-mode)
   (vertico-multiform-mode)
   (setq vertico-multiform-commands
         '((consult-imenu buffer indexed)
@@ -383,6 +405,10 @@
                '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
                  nil
                  (window-parameters (mode-line-format . none)))))
+
+(use-package my-embark
+  :ensure nil
+  :after embark)
 
 (use-package embark-consult
   :ensure t
@@ -504,6 +530,13 @@
    ;; :preview-key "M-."
    :preview-key '(:debounce 0.4 any))
   (setq consult-narrow-key "<"))
+
+(use-package consult-dir
+  :ensure t
+  :bind (("C-x C-d" . consult-dir)
+         :map vertico-map
+         ("C-x C-d" . consult-dir)
+         ("C-x C-j" . consult-dir-jump-file)))
 
 (use-package stripspace
   :ensure t
@@ -858,7 +891,7 @@
   (advice-add 'my-isearch-backward-region-or-word :before #'my-better-jumper-set-jump)
   (advice-add 'begin-of-buffer :before #'my-better-jumper-set-jump)
   (advice-add 'end-of-buffer :before #'my-better-jumper-set-jump)
-  (advice-add 'backward-up-list :before #'my-better-jumper-set-jump)
+  (advice-add 'avy-goto-char-2 :before #'my-better-jumper-set-jump)
   :config
   (better-jumper-mode 1))
 
