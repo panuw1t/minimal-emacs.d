@@ -59,6 +59,7 @@ The region is deactivated after starting the search."
                            (deactivate-mark))))) ; deactivate region
     (isearch-forward nil 1)
     (when search-string
+      (isearch-toggle-word)
       (isearch-yank-string search-string))))
 
 (defun my-isearch-backward-region-or-word ()
@@ -71,6 +72,7 @@ The region is deactivated after starting the search."
                            (deactivate-mark))))) ; deactivate region
     (isearch-backward nil 1)
     (when search-string
+      (isearch-toggle-word)
       (isearch-yank-string search-string))))
 
 (provide 'my-isearch)
