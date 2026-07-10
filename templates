@@ -1,0 +1,20 @@
+fundamental-mode ;; Available everywhere
+
+(today (format-time-string "%Y-%m-%d")
+       :ann "Today's date"
+       :doc "Insert today's date")
+
+
+c-ts-mode
+
+(std "#include <stdlib.h>")
+(io "#include <stdio.h>")
+(str "#include <string.h>")
+(inc "#include <" (p (concat (file-name-base (or (buffer-file-name) (buffer-name))) ".h")) ">")
+(incc "#include \"" (p (concat (file-name-base (or (buffer-file-name) (buffer-name))) ".h")) "\"")
+
+
+;; Local Variables:
+;; mode: lisp-data
+;; outline-regexp: "[a-z]"
+;; End:

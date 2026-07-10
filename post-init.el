@@ -112,6 +112,8 @@
 (use-package window
   :ensure nil
   :custom
+  (split-height-threshold nil)
+  (split-width-threshold 0)
   (switch-to-buffer-in-dedicated-window 'pop)
   (switch-to-buffer-obey-display-actions t)
   (switch-to-prev-buffer-skip-regexp "^\\*\\|^magit")
@@ -125,9 +127,8 @@
                  (window-height . 0.3)))
   (add-to-list 'display-buffer-alist
                '("\\*helpful.*\\*"
-                 (display-buffer-reuse-window display-buffer-in-side-window)
-                 (side . right)
-                 (window-width . 80))))
+                 (display-buffer-in-previous-window)
+                 (inhibit-same-window . nil))))
 
 (use-package project
   :ensure nil
@@ -136,6 +137,7 @@
    (lambda (mode) (format "*compilation-%s*" (project-name (project-current)))))
   :bind (:map my-leader-map
               ("f" . project-find-file)
+              ("C-f" . project-find-file)
               ("r" . project-recompile)
               ("p" . project-switch-project))
   :config
@@ -155,6 +157,7 @@
   (auto-save-default t)
   (auto-save-interval 300)
   (auto-save-timeout 30)
+  (truncate-lines nil)
   (dabbrev-case-replace nil)
   (dabbrev-case-fold-search nil)
   (package-install-upgrade-built-in t)
@@ -192,7 +195,7 @@
   (global-set-key (kbd "M-[") 'switch-to-prev-buffer)
   (global-set-key (kbd "M-]") 'switch-to-next-buffer)
 
-  (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
+  (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-17"))
   ;; (mapc #'disable-theme custom-enabled-themes)
   ;; (load-theme 'wombat t)
   (setq-default display-line-numbers-type 'relative)
@@ -255,7 +258,23 @@ or the default '*compilation*' buffer if no project is active."
               (delete-window window)
             (display-buffer target))
         (message "No compilation buffer found for this context."))))
-  (keymap-set my-leader-map "s" #'my-toggle-project-compilation-buffer))
+  (keymap-set my-leader-map "s" #'my-toggle-project-compilation-buffer)
+  (defun set-window-height-min ()
+    "Set the current window to 30% of the frame height."
+    (interactive)
+    (let ((height (floor (* 0.3 (frame-height)))))
+      (window-resize nil
+                     (- height (window-total-height))
+                     nil)))
+  (defun set-window-height-max ()
+    "Set the current window to 80% of the frame height."
+    (interactive)
+    (let ((height (floor (* 0.8 (frame-height)))))
+      (window-resize nil
+                     (- height (window-total-height))
+                     nil)))
+  (define-key ctl-x-map (kbd "w 0") #'set-window-height-min)
+  (define-key ctl-x-map (kbd "w 1") #'set-window-height-max))
 
 (use-package dired
   :ensure nil
@@ -330,7 +349,11 @@ or the default '*compilation*' buffer if no project is active."
   ;; used by `completion-at-point'.
   (add-hook 'completion-at-point-functions #'cape-dabbrev)
   (add-hook 'completion-at-point-functions #'cape-file)
-  (add-hook 'completion-at-point-functions #'cape-elisp-block))
+  (add-hook 'completion-at-point-functions #'cape-elisp-block)
+  (add-hook 'makefile-gmake-mode-hook
+            (lambda ()
+              (add-hook 'completion-at-point-functions #'cape-dabbrev nil t)
+              )))
 
 (use-package vertico
   :ensure t
@@ -356,8 +379,7 @@ or the default '*compilation*' buffer if no project is active."
           (consult-location buffer)))
   (setq vertico-buffer-display-action
         '(display-buffer-in-side-window
-          (side . right)
-          (window-width . 0.5))))
+          (side . right))))
 
 (use-package vertico-directory
   :after vertico
@@ -712,8 +734,8 @@ or the default '*compilation*' buffer if no project is active."
              avy-goto-char-2
              avy-next)
   :init
-  (global-set-key (kbd "C-=") 'avy-goto-char)
-  (global-set-key (kbd "C-'") 'avy-goto-char-2))
+  (global-set-key (kbd "C-'") 'avy-goto-char)
+  (global-set-key (kbd "C-=") 'avy-goto-char-2))
 
 (use-package helpful
   :ensure t
@@ -834,38 +856,17 @@ or the default '*compilation*' buffer if no project is active."
   (easysession-mode-line-misc-info t)
   (easysession-switch-to-save-session nil)
   :config
-  (global-set-key (kbd "C-c l") 'easysession-switch-to)
-  (global-set-key (kbd "C-c s") 'easysession-save)
-  (setq easysession-setup-load-session nil)
-  (easysession-define-handler
-    "eww"
-    (lambda (session-data)
-      (dolist (item session-data)
-        (let* ((buffer-name (car item))
-               (data (cdr item))
-               (url (alist-get 'url data))
-               (point-pos (alist-get 'point data)))
-          (when (and url (string-match "\\*eww\\*" buffer-name))
-            (eww url)
-            (when point-pos
-              ;; wait until page is rendered
-              (add-hook
-               'eww-after-render-hook
-               (lambda ()
-                 (goto-char (min point-pos (point-max))))
-               ;; append, local
-               nil t))))))
-    (lambda (buffers)
-      (easysession-save-handler-dolist-buffers
-        buffers
-        (when (derived-mode-p 'eww-mode)
-          (let ((url (or (and (boundp 'eww-current-url) eww-current-url)
-                         (plist-get eww-data :url))))
-            (when url
-              (cons (buffer-name)
-                    (list
-                     (cons 'url url)
-                     (cons 'point (point)))))))))))
+  (global-set-key (kbd "C-c sl") #'easysession-switch-to) ; Load session
+  (global-set-key (kbd "C-c ss") #'easysession-save) ; Save session
+  (global-set-key (kbd "C-c sL") #'easysession-switch-to-and-restore-geometry)
+  (global-set-key (kbd "C-c sr") #'easysession-rename)
+  (global-set-key (kbd "C-c sR") #'easysession-reset)
+  (global-set-key (kbd "C-c su") #'easysession-unload)
+  (global-set-key (kbd "C-c sd") #'easysession-delete)
+  (setq easysession-save-interval (* 10 60))
+  (setq easysession-switch-to-save-session t)
+  (setq easysession-switch-to-exclude-current nil)
+  (setq easysession-setup-load-session nil))
 
 (use-package better-jumper
   :ensure t
@@ -919,6 +920,8 @@ or the default '*compilation*' buffer if no project is active."
   (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh))
 
 (use-package tempel
+  :custom
+  (tempel-path (expand-file-name "templates" minimal-emacs-user-directory))
   :ensure t
   :bind (("M-+" . tempel-complete)
          ("M-*" . tempel-insert)
@@ -952,3 +955,18 @@ or the default '*compilation*' buffer if no project is active."
   ; (kind-icon-default-face 'corfu-default) ; only needed with blend-background
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
+(use-package buffer-terminator
+  :custom
+  (buffer-terminator-verbose nil)
+
+  ;; Set the inactivity timeout (in seconds) after which buffers are considered
+  ;; inactive (default is 30 minutes):
+  (buffer-terminator-inactivity-timeout (* 30 60)) ; 30 minutes
+
+  ;; Define how frequently the cleanup process should run (default is every 10
+  ;; minutes):
+  (buffer-terminator-interval (* 10 60)) ; 10 minutes
+
+  :config
+  (buffer-terminator-mode 1))
