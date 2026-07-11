@@ -403,7 +403,10 @@ or the default '*compilation*' buffer if no project is active."
   :ensure t
   :bind (:map minibuffer-local-map
               ("M-A" . marginalia-cycle))
-  :hook (after-init . marginalia-mode))
+  :hook (after-init . marginalia-mode)
+  :config
+  (setf (alist-get 'imenu marginalia-annotators)
+        '(none marginalia-annotate-imenu builtin)))
 
 (use-package embark
   :ensure t
@@ -893,6 +896,7 @@ or the default '*compilation*' buffer if no project is active."
   (advice-add 'begin-of-buffer :before #'my-better-jumper-set-jump)
   (advice-add 'end-of-buffer :before #'my-better-jumper-set-jump)
   (advice-add 'avy-goto-char-2 :before #'my-better-jumper-set-jump)
+  (advice-add 'avy-goto-char :before #'my-better-jumper-set-jump)
   :config
   (better-jumper-mode 1))
 

@@ -27,27 +27,38 @@
 (require 'embark)
 
 (defun my/embark-act-ace-window ()
-  "Use `ace-window' to select a window if multiple exist, then run the Embark action."
+  "Select a window and run the Embark action.
+- 1 window: Split and execute.
+- 2 windows: Switch to the other window and execute.
+- 3+ windows: Use ace-window to select, then execute."
   (interactive)
   (let* ((target (car (embark--targets)))
          (type (plist-get target :type))
-         (action (embark--default-action type)))
+         (action (embark--default-action type))
+         (win-count (length (window-list)))) ;; Store the count to check it easily
 
     (unless action
       (user-error "No default action found for target type '%s'" type))
 
-    (if (<= (length (window-list)) 1)
-        ;; SCENARIO A: Only 1 window. Do nothing special, just run the action.
-        (command-execute action)
+    (cond
+     ;; SCENARIO A: Only 1 window. Split it and switch.
+     ((= win-count 1)
+      (or (split-window-sensibly)
+          (split-window-below))
+      (other-window 1))
 
-      ;; SCENARIO B: 2+ windows. Run ace-window with dispatch enabled.
+     ;; SCENARIO B: Exactly 2 windows. Just jump to the other one.
+     ((= win-count 2)
+      (other-window 1))
+
+     ;; SCENARIO C: 3+ windows. Run ace-window with dispatch enabled.
+     (t
       (let ((aw-dispatch-always t))
-        (call-interactively #'ace-window))
+        (call-interactively #'ace-window))))
 
-      ;; Execute the action, forcing it into the currently selected window
-      ;; so `display-buffer` doesn't misroute it if a new split was created.
-      (let ((display-buffer-overriding-action '(display-buffer-same-window)))
-        (command-execute action)))))
+    ;; Execute the action, forcing it into whichever window was just selected above.
+    (let ((display-buffer-overriding-action '(display-buffer-same-window)))
+      (command-execute action))))
 
 ;; Bind this to "A" (Shift + a) or any key you prefer in the general Embark map
 (with-eval-after-load 'embark
