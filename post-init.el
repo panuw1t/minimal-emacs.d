@@ -1,5 +1,7 @@
 ;;; post-init.el --- load before init.el -*- no-byte-compile: t; lexical-binding: t; -*-
 
+(set-frame-parameter (selected-frame) 'alpha '(90 . 90))
+
 (defvar my-leader-map (make-sparse-keymap))
 
 (use-package compile-angel
@@ -195,7 +197,8 @@
   (global-set-key (kbd "M-[") 'switch-to-prev-buffer)
   (global-set-key (kbd "M-]") 'switch-to-next-buffer)
 
-  (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-17"))
+
+  (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-18"))
   ;; (mapc #'disable-theme custom-enabled-themes)
   ;; (load-theme 'wombat t)
   (setq-default display-line-numbers-type 'relative)
@@ -656,15 +659,16 @@ or the default '*compilation*' buffer if no project is active."
   (treesit-auto-add-to-auto-mode-alist 'all)
   (global-treesit-auto-mode))
 
-(unless (package-installed-p 'kotlin-ts-mode)
-  (package-vc-install
-   '(kotlin-ts-mode
-     :url "https://gitlab.com/bricka/emacs-kotlin-ts-mode.git")))
+;; (unless (package-installed-p 'kotlin-ts-mode)
+;;   (package-vc-install
+;;    '(kotlin-ts-mode
+;;      :url "https://gitlab.com/bricka/emacs-kotlin-ts-mode.git")))
 
 (use-package kotlin-ts-mode
   :ensure nil
   :mode (("\\.kt\\'"  . kotlin-ts-mode)
          ("\\.kts\\'" . kotlin-ts-mode))
+  :load-path "~/.emacs.d/lisp/emacs-kotlin-ts-mode"
   :hook
   (kotlin-ts-mode . (lambda ()
                       (setq-local eglot-ignored-server-capabilities
