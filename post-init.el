@@ -87,6 +87,20 @@
               ("n" . next-error)
               ("p" . previous-error))
   :config
+
+  (defun my-prevent-window-split (orig-fun &rest args)
+    "Run ORIG-FUN without allowing `display-buffer` to split windows."
+    (let ((split-height-threshold nil)
+          (split-width-threshold nil))
+      (apply orig-fun args)))
+
+  (advice-add 'next-error :around #'my-prevent-window-split)
+  (advice-add 'previous-error :around #'my-prevent-window-split)
+  ;; If you use minor modes that step without selecting the window:
+  (advice-add 'next-error-no-select :around #'my-prevent-window-split)
+  (advice-add 'previous-error-no-select :around #'my-prevent-window-split)
+
+
   (setf (alist-get 'gradle-kotlin compilation-error-regexp-alist-alist)
         '("^e: file://\\([^:]+\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3)))
 
@@ -195,7 +209,7 @@
   (global-set-key (kbd "M-[") 'switch-to-prev-buffer)
   (global-set-key (kbd "M-]") 'switch-to-next-buffer)
 
-  (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-17"))
+  (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
   ;; (mapc #'disable-theme custom-enabled-themes)
   ;; (load-theme 'wombat t)
   (setq-default display-line-numbers-type 'relative)
@@ -737,8 +751,8 @@ or the default '*compilation*' buffer if no project is active."
              avy-goto-char-2
              avy-next)
   :init
-  (global-set-key (kbd "C-'") 'avy-goto-char)
-  (global-set-key (kbd "C-=") 'avy-goto-char-2))
+  (global-set-key (kbd "C-'") 'avy-goto-char-2)
+  (global-set-key (kbd "C-=") 'avy-goto-char))
 
 (use-package helpful
   :ensure t
@@ -818,7 +832,7 @@ or the default '*compilation*' buffer if no project is active."
 (use-package ace-window
   :ensure t
   :custom
-  (aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
+  (aw-dispatch-when-more-than 3)
   :bind (("M-o" . 'ace-window)))
 
 (use-package expand-region
@@ -959,18 +973,3 @@ or the default '*compilation*' buffer if no project is active."
   ; (kind-icon-default-face 'corfu-default) ; only needed with blend-background
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
-
-(use-package buffer-terminator
-  :custom
-  (buffer-terminator-verbose nil)
-
-  ;; Set the inactivity timeout (in seconds) after which buffers are considered
-  ;; inactive (default is 30 minutes):
-  (buffer-terminator-inactivity-timeout (* 30 60)) ; 30 minutes
-
-  ;; Define how frequently the cleanup process should run (default is every 10
-  ;; minutes):
-  (buffer-terminator-interval (* 10 60)) ; 10 minutes
-
-  :config
-  (buffer-terminator-mode 1))
