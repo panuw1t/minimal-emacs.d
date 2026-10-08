@@ -1,6 +1,10 @@
 ;;; post-init.el --- load before init.el -*- no-byte-compile: t; lexical-binding: t; -*-
 
-(defvar my-leader-map (make-sparse-keymap))
+;; macOS: ⌘ is Meta; leave ⌥ free for AeroSpace window-manager bindings
+(when (eq system-type 'darwin)
+  (setq ns-command-modifier 'meta
+        ns-option-modifier 'none
+        ns-right-option-modifier 'none))
 
 (use-package compile-angel
   :demand t
@@ -16,7 +20,7 @@
   (push "/post-early-init.el" compile-angel-excluded-files)
   (push "/lisp/toggle-vterm.el" compile-angel-excluded-files)
   (push "/lisp/my-isearch.el" compile-angel-excluded-files)
-  (push "/lisp/my-embark.el" compile-angel-excluded-files)
+  (push "/lisp/meow-setup.el" compile-angel-excluded-files)
   (compile-angel-on-load-mode 1))
 
 (use-package autorevert
@@ -35,7 +39,6 @@
   :commands (recentf-mode recentf-cleanup)
   :hook
   (after-init . recentf-mode)
-
   :custom
   (recentf-auto-cleanup (if (daemonp) 300 'never))
   (recentf-exclude
@@ -45,7 +48,6 @@
          "COMMIT_EDITMSG\\'"
          "\\.\\(?:gz\\|gif\\|svg\\|png\\|jpe?g\\|bmp\\|xpm\\)$"
          "-autoloads\\.el$" "autoload\\.el$"))
-
   :config
   (add-hook 'kill-emacs-hook #'recentf-cleanup -90))
 
@@ -79,28 +81,13 @@
   (which-key-idle-secondary-delay 0.25)
   (which-key-add-column-padding 1)
   :config
-  (which-key-setup-side-window-right-bottom))
+  (which-key-setup-side-window-bottom))
 
 (use-package compile
   :ensure nil
-  :bind (:map compilation-mode-map
-              ("n" . next-error)
-              ("p" . previous-error))
+  :custom
+  (compilation-environment (list (concat "PATH=" (getenv "HOME") "/.bun/bin:" (getenv "PATH"))))
   :config
-
-  (defun my-prevent-window-split (orig-fun &rest args)
-    "Run ORIG-FUN without allowing `display-buffer` to split windows."
-    (let ((split-height-threshold nil)
-          (split-width-threshold nil))
-      (apply orig-fun args)))
-
-  (advice-add 'next-error :around #'my-prevent-window-split)
-  (advice-add 'previous-error :around #'my-prevent-window-split)
-  ;; If you use minor modes that step without selecting the window:
-  (advice-add 'next-error-no-select :around #'my-prevent-window-split)
-  (advice-add 'previous-error-no-select :around #'my-prevent-window-split)
-
-
   (setf (alist-get 'gradle-kotlin compilation-error-regexp-alist-alist)
         '("^e: file://\\([^:]+\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3)))
 
@@ -112,48 +99,25 @@
   :ensure nil
   :custom
   (uniquify-buffer-name-style 'reverse)
-  (uniquify-separator "•")
-  (uniquify-after-kill-buffer-p t))
+  (uniquify-separator "|")
+  (uniquify-after-kill-buffer-p t))     ; TODO same file name for different project cause switch to show both need fix.
 
 (use-package tooltip
   :ensure nil
-  :hook (after-init . tooltip-mode)
-  :custom
-  (tooltip-delay 20)
-  (tooltip-short-delay 0.08)
-  (tooltip-hide-delay 4))
+  :hook (after-init . tooltip-mode))    ; TODO hover mouse on link for information, need investigate eldoc package
 
 (use-package window
-  :ensure nil
-  :custom
-  (split-height-threshold nil)
-  (split-width-threshold 0)
-  (switch-to-buffer-in-dedicated-window 'pop)
-  (switch-to-buffer-obey-display-actions t)
-  (switch-to-prev-buffer-skip-regexp "^\\*\\|^magit")
-  (switch-to-prev-buffer-skip 'this)
-  :config
-  (add-to-list 'display-buffer-alist
-               '((major-mode . compilation-mode)
-                 (display-buffer-reuse-window display-buffer-in-side-window)
-                 (side . bottom)
-                 (slot . 0)
-                 (window-height . 0.3)))
-  (add-to-list 'display-buffer-alist
-               '("\\*helpful.*\\*"
-                 (display-buffer-in-previous-window)
-                 (inhibit-same-window . nil))))
+  :ensure nil)                          ; TODO need to check other package for control instead of pure configure
+                                        ; windmove  directional move
+                                        ; popper    handle *..* buffer
+                                        ; shackle   control where special buffers appear
+
 
 (use-package project
   :ensure nil
   :custom
   (project-compilation-buffer-name-function
    (lambda (mode) (format "*compilation-%s*" (project-name (project-current)))))
-  :bind (:map my-leader-map
-              ("f" . project-find-file)
-              ("C-f" . project-find-file)
-              ("r" . project-recompile)
-              ("p" . project-switch-project))
   :config
   (add-to-list 'project-switch-commands
                '(magit-project-status "Magit" ?m))
@@ -166,56 +130,50 @@
 ;;   :hook
 ;;   (after-init . server-start))
 
-(use-package emacs
+(use-package dabbrev
+  :ensure nil
+  :bind (("M-/" . dabbrev-completion))
+  :custom
+  (dabbrev-case-replace nil)
+  (dabbrev-case-fold-search 1))
+
+(use-package dired
+  :ensure nil
+  :bind (:map dired-mode-map
+              (";" . dired-do-shell-command))
+  :custom
+  (insert-directory-program "gls")
+  (dired-listing-switches "-alh --group-directories-first"))
+
+ (use-package emacs
   :custom
   (auto-save-default t)
   (auto-save-interval 300)
   (auto-save-timeout 30)
   (truncate-lines nil)
-  (dabbrev-case-replace nil)
-  (dabbrev-case-fold-search nil)
   (package-install-upgrade-built-in t)
   (line-number-mode t)
   (column-number-mode t)
   (mode-line-position-column-line-format '("%l:%C"))
   (treesit-font-lock-level 4)
   (confirm-kill-emacs 'y-or-n-p)
-  (compilation-environment (list (concat "PATH=" (getenv "HOME") "/.bun/bin:" (getenv "PATH"))))
+  (read-buffer-completion-ignore-case t)
+  :hook
+  (after-init . repeat-mode)
+  (after-init . delete-selection-mode)
+  (after-init . display-time-mode)
+  (after-init . show-paren-mode)
+  (after-init . winner-mode)
+  (after-init . window-divider-mode)
+  (after-init . minibuffer-depth-indicate-mode)
   :config
-  (define-key global-map (kbd "C-,") my-leader-map)
-  (define-key my-leader-map (kbd "u") 'revert-buffer)
-  ;; (global-set-key (kbd "C-x C-r") 'recentf-open-files)
-  (global-set-key (kbd "M-n") 'scroll-up-line)
-  (global-set-key (kbd "M-RET") 'exchange-point-and-mark)
-  (global-set-key (kbd "M-p") 'scroll-down-line)
-  (global-set-key (kbd "C-M-v") 'scroll-down-line)
-  (global-set-key (kbd "M-/") 'dabbrev-completion)
-  (global-set-key (kbd "C-c u") 'winner-undo)
-  (global-set-key (kbd "C-c r") 'winner-redo)
-  (with-eval-after-load 'winner
-    (define-key winner-repeat-map (kbd "u") #'winner-undo)
-    (define-key winner-repeat-map (kbd "r") #'winner-redo))
-
-  (defun my-scroll-other-window-up ()
-    (interactive)
-    (scroll-other-window 1))
-
-  (defun my-scroll-other-window-down ()
-    (interactive)
-    (scroll-other-window -1))
-
-  (global-set-key (kbd "C-M-v") 'my-scroll-other-window-up)
-  (global-set-key (kbd "C-M-S-v") 'my-scroll-other-window-down)
-  (global-set-key (kbd "M-[") 'switch-to-prev-buffer)
-  (global-set-key (kbd "M-]") 'switch-to-next-buffer)
-
-  (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-16"))
+  (add-to-list 'default-frame-alist '(font . "JetBrainsMono Nerd Font-15"))
   ;; (mapc #'disable-theme custom-enabled-themes)
   ;; (load-theme 'wombat t)
+
   (setq-default display-line-numbers-type 'relative)
   (dolist (hook '(prog-mode-hook text-mode-hook conf-mode-hook))
     (add-hook hook #'display-line-numbers-mode))
-  (delete-selection-mode 1)
 
   (unless (and (eq window-system 'mac)
                (bound-and-true-p mac-carbon-version-string))
@@ -226,191 +184,54 @@
     ;; this version of Emacs natively supports smooth scrolling.
     ;; https://bitbucket.org/mituharu/emacs-mac/commits/65c6c96f27afa446df6f9d8eff63f9cc012cc738
     (setq pixel-scroll-precision-use-momentum nil) ; Precise/smoother scrolling
-    (pixel-scroll-precision-mode 1))
-
-  (add-hook 'after-init-hook #'repeat-mode)
-  (add-hook 'after-init-hook #'display-time-mode)
-  (add-hook 'after-init-hook #'show-paren-mode)
-  (add-hook 'after-init-hook #'winner-mode)
-  (add-hook 'after-init-hook #'window-divider-mode)
-  (add-hook 'after-init-hook #'minibuffer-depth-indicate-mode)
-
-  (defun my-backward-kill-word ()
-    (interactive)
-    (if (use-region-p)
-        (kill-region (region-beginning) (region-end))
-      (if (and (> (point) (point-min))
-               (member (char-before) '(?\ ?\t ?\n)))
-          (let ((origin (point)))
-            (skip-chars-backward " \t\n")
-            (kill-region (point) origin))
-        (backward-kill-word 1))))
-  (global-set-key (kbd "C-w") 'my-backward-kill-word)
-  (add-to-list 'load-path (expand-file-name "lisp/" minimal-emacs-user-directory))
-  (global-set-key (kbd "C-c w") ctl-x-4-map)
-
-  (defun my-dwim-compile ()
-  "Run `compile' if no project is found, otherwise run `project-compile'."
-  (interactive)
-  (if (project-current)
-      (project-compile)
-    (call-interactively #'compile)))
-  (keymap-set my-leader-map "c" #'my-dwim-compile)
-
-  (defun my-toggle-project-compilation-buffer ()
-    "Show or hide the current project's compilation buffer,
-or the default '*compilation*' buffer if no project is active."
-    (interactive)
-    (let* ((pr (project-current))
-           (buff-name (if pr
-                          (format "*compilation-%s*" (project-name pr))
-                        "*compilation*"))
-           (target (get-buffer buff-name)))
-
-      (if target
-          (if-let ((window (get-buffer-window target)))
-              (delete-window window)
-            (display-buffer target))
-        (message "No compilation buffer found for this context."))))
-  (keymap-set my-leader-map "s" #'my-toggle-project-compilation-buffer)
-  (defun set-window-height-min ()
-    "Set the current window to 30% of the frame height."
-    (interactive)
-    (let ((height (floor (* 0.3 (frame-height)))))
-      (window-resize nil
-                     (- height (window-total-height))
-                     nil)))
-  (defun set-window-height-max ()
-    "Set the current window to 80% of the frame height."
-    (interactive)
-    (let ((height (floor (* 0.8 (frame-height)))))
-      (window-resize nil
-                     (- height (window-total-height))
-                     nil)))
-  (define-key ctl-x-map (kbd "w 0") #'set-window-height-min)
-  (define-key ctl-x-map (kbd "w 1") #'set-window-height-max))
-
-(use-package dired
-  :ensure nil
-  :bind (:map dired-mode-map
-              (";" . dired-do-shell-command))
-  :custom
-  (dired-movement-style 'bounded-files)
-  :config
-  (add-hook 'dired-mode-hook #'dired-hide-details-mode)
-  (setq dired-omit-files (concat "\\`[.]\\'"
-                                 "\\|\\(?:\\.js\\)?\\.meta\\'"
-                                 "\\|\\.\\(?:elc|a\\|o\\|pyc\\|pyo\\|swp\\|class\\)\\'"
-                                 "\\|^\\.DS_Store\\'"
-                                 "\\|^\\.\\(?:svn\\|git\\)\\'"
-                                 "\\|^\\.ccls-cache\\'"
-                                 "\\|^__pycache__\\'"
-                                 "\\|^\\.project\\(?:ile\\)?\\'"
-                                 "\\|^flycheck_.*"
-                                 "\\|^flymake_.*"))
-  (add-hook 'dired-mode-hook #'dired-omit-mode)
-  ;; dired: Group directories first
-  (with-eval-after-load 'dired
-    (let ((args "--group-directories-first -ahlv"))
-      (when (or (eq system-type 'darwin) (eq system-type 'berkeley-unix))
-        (if-let* ((gls (executable-find "gls")))
-            (setq insert-directory-program gls)
-          (setq args nil)))
-      (when args
-        (setq dired-listing-switches args)))))
-
-(use-package my-isearch
-  :ensure nil
-  :after isearch
-  :bind (("C-r" . my-isearch-backward-region-or-word)
-         ("C-s" . my-isearch-forward-region-or-word)
-         :map isearch-mode-map
-              ("C-g" . my-isearch-abort-dwim)
-              ("C-s" . my-isearch-switch-to-forward)
-              ("C-r" . my-isearch-switch-to-backward)))
+    (pixel-scroll-precision-mode 1)))
 
 (use-package corfu
   :ensure t
   :commands (corfu-mode global-corfu-mode)
-  :hook ((prog-mode . corfu-mode)
-         (shell-mode . corfu-mode)
-         (eshell-mode . corfu-mode))
   :custom
-  (corfu-cycle t)
-  (corfu-preselect 'prompt)
-  (read-extended-command-predicate #'command-completion-default-include-p)
-  (text-mode-ispell-word-completion nil)
-  (tab-always-indent 'complete)
+  (corfu-auto t)
+  (corfu-auto-delay 0.2)
+  (corfu-auto-trigger ".")
+  (corfu-quit-no-match 'separator)
+  :bind
+  (:map corfu-map
+        ("C-M-g" . corfu-info-location)
+        ("C-M-h" . corfu-info-documentation)
+        ("C-M-SPC" . corfu-insert-separator))
+  :hook
+  (after-init . global-corfu-mode)
   :config
-  (global-corfu-mode)
-  (corfu-popupinfo-mode)
-  (defun corfu-move-to-minibuffer ()
-    (interactive)
-    (pcase completion-in-region--data
-      (`(,beg ,end ,table ,pred ,extras)
-       (let ((completion-extra-properties extras)
-             completion-cycle-threshold completion-cycling)
-         (consult-completion-in-region beg end table pred)))))
-  (keymap-set corfu-map "M-m" #'corfu-move-to-minibuffer)
-  (add-to-list 'corfu-continue-commands #'corfu-move-to-minibuffer))
+  (corfu-popupinfo-mode))
 
 (use-package cape
-  :ensure t
-  :commands (cape-dabbrev cape-file cape-elisp-block cape-capf-trigger)
+  :commands (cape-dabbrev cape-file cape-elisp-block)
   :bind ("C-c p" . cape-prefix-map)
   :init
+  (defalias 'cape-dabbrev-min-3 (cape-capf-prefix-length #'cape-dabbrev 3))
   ;; Add to the global default value of `completion-at-point-functions' which is
   ;; used by `completion-at-point'.
-  (add-hook 'completion-at-point-functions #'cape-dabbrev)
+  (add-hook 'completion-at-point-functions #'cape-dabbrev-min-3)
   (add-hook 'completion-at-point-functions #'cape-file)
-  (add-hook 'completion-at-point-functions #'cape-elisp-block)
-  (add-hook 'makefile-gmake-mode-hook
-            (lambda ()
-              (add-hook 'completion-at-point-functions #'cape-dabbrev nil t)
-              )))
+  (add-hook 'completion-at-point-functions #'cape-elisp-block))
 
 (use-package vertico
   :ensure t
-  :init
-  (vertico-mode)
   :custom
-  ;; (vertico-scroll-margin 0) ;; Different scroll margin
-  ;; (vertico-count 20) ;; Show more candidates
-  ;; (vertico-resize t) ;; Grow and shrink the Vertico minibuffer
-  (vertico-cycle t) ;; Enable cycling for `vertico-next/previous'
-  :bind
-  (:map vertico-map
-        ("C-M-n" . vertico-next-group)
-        ("C-M-p" . vertico-previous-group))
+  (vertico-resize t)
+  (vertico-cycle t)
+  (vertico-multiform-commands           ;still stuck with default input for project-find-file may need other package
+   '((project-find-file (vertico-sort-function . vertico-sort-length-alpha))))
   :config
-  (vertico-indexed-mode)
-  (vertico-multiform-mode)
-  (setq vertico-multiform-commands
-        '((consult-imenu buffer indexed)
-          (consult-buffer reverse)))
-  (setq vertico-multiform-categories
-        '((consult-grep buffer)
-          (consult-location buffer)))
-  (setq vertico-buffer-display-action
-        '(display-buffer-in-side-window
-          (side . right))))
-
-(use-package vertico-directory
-  :after vertico
-  :ensure nil
-  :bind (:map vertico-map
-              ("RET" . vertico-directory-enter)
-              ("DEL" . vertico-directory-delete-char)
-              ("M-DEL" . vertico-directory-delete-word))
-  :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
+  (vertico-mode)
+  (vertico-multiform-mode))
 
 (use-package orderless
   :ensure t
   :custom
   (completion-styles '(orderless basic))
-  (completion-category-overrides '((file (styles partial-completion))
-                                   (project-file (styles partial-completion))))
-  ;; (completion-pcm-leading-wildcard t)   ;; Emacs 31: partial-completion behaves like substring
+  (completion-category-overrides '((file (styles partial-completion))))
+  (completion-pcm-leading-wildcard t)   ;; Emacs 31: partial-completion behaves like substring
   )
 
 (use-package marginalia
@@ -422,153 +243,25 @@ or the default '*compilation*' buffer if no project is active."
   (setf (alist-get 'imenu marginalia-annotators)
         '(none marginalia-annotate-imenu builtin)))
 
-(use-package embark
-  :ensure t
-  :commands (embark-act
-             embark-dwim
-             embark-export
-             embark-collect
-             embark-bindings
-             embark-prefix-help-command)
-  :bind
-  (("C-." . embark-act)         ;; pick some comfortable binding
-   ("M-." . embark-dwim)        ;; good alternative: M-.
-   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+(use-package meow
+  :ensure t)
 
-  :init
-  (setq prefix-help-command #'embark-prefix-help-command)
-
-  :config
-  ;; Hide the mode line of the Embark live/completions buffers
-  (add-to-list 'display-buffer-alist
-               '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-                 nil
-                 (window-parameters (mode-line-format . none)))))
-
-(use-package my-embark
+(use-package meow-setup
   :ensure nil
-  :after embark)
-
-(use-package embark-consult
-  :ensure t
-  :hook
-  (embark-collect-mode . consult-preview-at-point-mode))
-
-(use-package consult
-  :ensure t
-  :custom
-  (consult-fd-args (list (if (executable-find "fdfind" 'remote) "fdfind" "fd")
-                         "--type" "f"
-                         "--hidden"
-                         "--no-ignore"
-                         "--color=never"))
-  (consult-buffer-sources
-   '(consult-source-buffer
-     consult-source-hidden-buffer
-     consult-source-modified-buffer
-     consult-source-other-buffer
-     consult-source-buffer-register
-     consult-source-file-register consult-source-bookmark
-     consult-source-project-buffer-hidden
-     consult-source-project-recent-file-hidden
-     consult-source-project-root-hidden))
-  :bind (;; C-c bindings in `mode-specific-map'
-         ("C-c M-x" . consult-mode-command)
-         ("C-c h" . consult-history)
-         ("C-c k" . consult-kmacro)
-         ("C-c m" . consult-man)
-         ("C-c i" . consult-info)
-         ([remap Info-search] . consult-info)
-         ;; C-x bindings in `ctl-x-map'
-         ("C-x M-:" . consult-complex-command)
-         ("C-x b" . consult-buffer)
-         ("C-x 4 b" . consult-buffer-other-window)
-         ("C-x 5 b" . consult-buffer-other-frame)
-         ("C-x t b" . consult-buffer-other-tab)
-         ("C-x r b" . consult-bookmark)
-         ("C-x p b" . consult-project-buffer)
-         ;; Custom M-# bindings for fast register access
-         ("M-#" . consult-register-load)
-         ("M-'" . consult-register-store)
-         ("C-M-#" . consult-register)
-         ;; Other custom bindings
-         ("M-y" . consult-yank-pop)
-         ;; M-g bindings in `goto-map'
-         ("M-g e" . consult-compile-error)
-         ("M-g f" . consult-flymake)
-         ("M-g g" . consult-goto-line)
-         ("M-g M-g" . consult-goto-line)
-         ("M-g o" . consult-outline)
-         ("M-g m" . consult-mark)
-         ("M-g k" . consult-global-mark)
-         ("M-g i" . consult-imenu)
-         ("M-g I" . consult-imenu-multi)
-         ;; M-s bindings in `search-map'
-         ("M-s d" . consult-find)
-         ("M-s c" . consult-locate)
-         ("M-s g" . consult-grep)
-         ("M-s G" . consult-git-grep)
-         ("M-s r" . consult-ripgrep)
-         ("M-s l" . consult-line)
-         ("M-s L" . consult-line-multi)
-         ("M-s k" . consult-keep-lines)
-         ("M-s u" . consult-focus-lines)
-         ;; Isearch integration
-         ("M-s e" . consult-isearch-history)
-         :map isearch-mode-map
-         ("M-e" . consult-isearch-history)
-         ("M-s e" . consult-isearch-history)
-         ("M-s L" . consult-line-multi)
-         ;; Minibuffer history
-         :map minibuffer-local-map
-         ("M-s" . consult-history)
-         ("M-r" . consult-history)
-         :map my-leader-map
-         ("a" . consult-fd)
-         ("C-SPC" . consult-buffer)
-         ("SPC" . consult-buffer))
-
-  ;; Enable automatic preview at point in the *Completions* buffer.
-  :hook (completion-list-mode . consult-preview-at-point-mode)
-
-  :init
-  ;; Optionally configure the register formatting. This improves the register
-  (setq register-preview-delay 0.5
-        register-preview-function #'consult-register-format)
-
-  ;; Optionally tweak the register preview window.
-  (advice-add #'register-preview :override #'consult-register-window)
-
-  ;; Use Consult to select xref locations with preview
-  (setq xref-show-xrefs-function #'consult-xref
-        xref-show-definitions-function #'consult-xref)
-
-  ;; Aggressive asynchronous that yield instantaneous results. (suitable for
-  ;; high-performance systems.) Note: Minad, the author of Consult, does not
-  ;; recommend aggressive values.
-  ;; Read: https://github.com/minad/consult/discussions/951
-  ;;
-  ;; However, the author of minimal-emacs.d uses these parameters to achieve
-  ;; immediate feedback from Consult.
-  ;; (setq consult-async-input-debounce 0.02
-  ;;       consult-async-input-throttle 0.05
-  ;;       consult-async-refresh-delay 0.02)
-
+  :after meow
   :config
-  (add-to-list 'consult-buffer-filter "\\*vterm")
-  (consult-customize
-   consult-line  :initial (when (use-region-p)
-                            (buffer-substring-no-properties
-                             (region-beginning)
-                             (region-end)))
-   consult-theme :preview-key '(:debounce 0.2 any)
-   consult-ripgrep consult-git-grep consult-grep
-   consult-bookmark consult-recent-file consult-xref
-   consult-source-bookmark consult-source-file-register
-   consult-source-recent-file consult-source-project-recent-file
-   ;; :preview-key "M-."
-   :preview-key '(:debounce 0.4 any))
-  (setq consult-narrow-key "<"))
+  (meow-setup)
+  (meow-global-mode 1))
+
+(use-package key-chord
+  :ensure
+  :after meow
+  :config
+  (key-chord-mode 1)
+  (setq key-chord-two-keys-delay 0.15)
+  (key-chord-define meow-insert-state-keymap "jk" 'meow-insert-exit))
+
+;; TODO embark + consult
 
 (use-package consult-dir
   :ensure t
@@ -670,13 +363,8 @@ or the default '*compilation*' buffer if no project is active."
   (treesit-auto-add-to-auto-mode-alist 'all)
   (global-treesit-auto-mode))
 
-(unless (package-installed-p 'kotlin-ts-mode)
-  (package-vc-install
-   '(kotlin-ts-mode
-     :url "https://gitlab.com/bricka/emacs-kotlin-ts-mode.git")))
-
 (use-package kotlin-ts-mode
-  :ensure nil
+  :ensure t
   :mode (("\\.kt\\'"  . kotlin-ts-mode)
          ("\\.kts\\'" . kotlin-ts-mode))
   :hook
@@ -687,7 +375,11 @@ or the default '*compilation*' buffer if no project is active."
 
 (use-package magit
   :commands (magit-status magit-blame)
-  :bind (("C-x g" . magit-status))
+  :bind (("C-x g" . magit-status)
+         :map magit-mode-map
+         ("n" . magit-section-forward-sibling)
+         ("p" . magit-section-backward-sibling))
+
   :config
   (add-to-list 'display-buffer-alist
                '((major-mode . magit-status-mode)
@@ -699,51 +391,10 @@ or the default '*compilation*' buffer if no project is active."
   (auto-package-update-interval 7)
   (auto-package-update-hide-results t)
   (auto-package-update-delete-old-versions t)
+  (auto-package-update-prompt-before-update t)
   :config
   (auto-package-update-maybe)
   (auto-package-update-at-time "10:00"))
-
-(use-package ispell
-  :ensure nil
-  :commands (ispell ispell-minor-mode)
-  :custom
-  ;; Set the ispell program name to aspell
-  (ispell-program-name "aspell")
-
-  ;; Define the "en_US" spell-check dictionary locally, telling Emacs to use
-  ;; UTF-8 encoding, match words using alphabetic characters, allow apostrophes
-  ;; inside words, treat non-alphabetic characters as word boundaries, and pass
-  ;; -d en_US to the underlying spell-check program.
-  (ispell-local-dictionary-alist
-   '(("en_US" "[[:alpha:]]" "[^[:alpha:]]" "[']" nil ("-d" "en_US") nil utf-8)))
-
-  ;; Configures Aspell's suggestion mode to "ultra", which provides more
-  ;; aggressive and detailed suggestions for misspelled words. The language
-  ;; is set to "en_US" for US English, which can be replaced with your desired
-  ;; language code (e.g., "en_GB" for British English, "de_DE" for German).
-  (ispell-extra-args '(; "--sug-mode=ultra"
-                       "--lang=en_US")))
-
-(use-package flyspell
-  :ensure nil
-  :commands flyspell-mode
-  :hook
-  (; (prog-mode . flyspell-prog-mode)
-   (text-mode . (lambda()
-                  (if (or (derived-mode-p 'yaml-mode)
-                          (derived-mode-p 'yaml-ts-mode)
-                          (derived-mode-p 'ansible-mode))
-                      (flyspell-prog-mode)
-                    (flyspell-mode 1)))))
-  :config
-  ;; Remove strings from Flyspell
-  (setq flyspell-prog-text-faces (delq 'font-lock-string-face
-                                       flyspell-prog-text-faces))
-
-  ;; Remove doc from Flyspell
-  (setq flyspell-prog-text-faces (delq 'font-lock-doc-face
-                                       flyspell-prog-text-faces))
-  (define-key flyspell-mode-map (kbd "C-,") nil))
 
 (use-package avy
   :ensure t
@@ -770,70 +421,6 @@ or the default '*compilation*' buffer if no project is active."
   ([remap describe-variable] . helpful-variable)
   :custom
   (helpful-max-buffers 7))
-
-;; (use-package yasnippet-snippets
-;;   :ensure t
-;;   :after yasnippet)
-;;
-;; (use-package yasnippet                  ; alternative https://github.com/minad/tempel
-;;   :ensure t
-;;   :commands (yas-minor-mode
-;;              yas-global-mode)
-;;
-;;   :hook
-;;   (after-init . yas-global-mode)
-;;
-;;   :custom
-;;   (yas-also-auto-indent-first-line t)  ; Indent first line of snippet
-;;   (yas-also-indent-empty-lines t)
-;;   (yas-snippet-revival nil)  ; Setting this to t causes issues with undo
-;;   (yas-wrap-around-region nil) ; Do not wrap region when expanding snippets
-;;   ;; (yas-triggers-in-field nil)  ; Disable nested snippet expansion
-;;   ;; (yas-indent-line 'fixed) ; Do not auto-indent snippet content
-;;   ;; (yas-prompt-functions '(yas-no-prompt))  ; No prompt for snippet choices
-;;
-;;   :init
-;;   ;; Suppress verbose messages
-;;   (setq yas-verbosity 0))
-
-(use-package persist-text-scale
-  :commands (persist-text-scale-mode
-             persist-text-scale-restore)
-
-  :hook (after-init . persist-text-scale-mode)
-
-  :custom
-  (text-scale-mode-step 1.07))
-
-(use-package vterm ;; has prerequisite cmake, libtool check document
-  :ensure t
-  :commands (vterm)
-  :bind (("C-<return>" . my-toggle-vterm)
-         (:map vterm-mode-map
-               ("C-M-1" . my-vterm-1)
-               ("C-M-2" . my-vterm-2)
-               ("C-M-3" . my-vterm-3)
-               ("C-M-4" . my-vterm-4)
-               ("C-M-5" . my-vterm-5)
-               ("C-M-]" . my-vterm-next)
-               ("C-M-[" . my-vterm-prev))))
-
-(use-package toggle-vterm
-  :ensure nil
-  :after vterm)
-
-;; (use-package combobulate
-;;   :custom
-;;   (combobulate-key-prefix "C-c o")
-;;   :commands (combobulate-mode)
-;;   :hook (prog-mode . combobulate-mode)
-;;   :load-path ("~/combobulate"))
-
-(use-package ace-window
-  :ensure t
-  :custom
-  (aw-dispatch-when-more-than 3)
-  :bind (("M-o" . 'ace-window)))
 
 (use-package expand-region
   :bind ("C-;" . er/expand-region))
@@ -862,58 +449,6 @@ or the default '*compilation*' buffer if no project is active."
   ;; (doom-themes-visual-bell-config)
   (doom-themes-org-config))
 
-(use-package easysession
-  :ensure t
-  :demand t
-  :commands (easysession-switch-to
-             easysession-save
-             easysession-save-mode
-             easysession-load-including-geometry)
-  :custom
-  (easysession-mode-line-misc-info t)
-  (easysession-switch-to-save-session nil)
-  :config
-  (global-set-key (kbd "C-c sl") #'easysession-switch-to) ; Load session
-  (global-set-key (kbd "C-c ss") #'easysession-save) ; Save session
-  (global-set-key (kbd "C-c sL") #'easysession-switch-to-and-restore-geometry)
-  (global-set-key (kbd "C-c sr") #'easysession-rename)
-  (global-set-key (kbd "C-c sR") #'easysession-reset)
-  (global-set-key (kbd "C-c su") #'easysession-unload)
-  (global-set-key (kbd "C-c sd") #'easysession-delete)
-  (setq easysession-save-interval (* 10 60))
-  (setq easysession-switch-to-save-session t)
-  (setq easysession-switch-to-exclude-current nil)
-  (setq easysession-setup-load-session nil))
-
-(use-package better-jumper
-  :ensure t
-  :custom
-  (better-jumper-add-jump-behavior 'replace)
-  :commands (better-jumper-jump-backward
-             better-jumper-jump-forward
-             better-jumper-set-jump)
-  :bind (("C-o" . better-jumper-jump-backward)
-         ("C-j" . better-jumper-jump-forward))
-  :init
-  (defun my-better-jumper-set-jump (&rest _)
-    (better-jumper-set-jump))
-  (advice-add 'xref-find-definitions :before #'my-better-jumper-set-jump)
-  (advice-add 'xref-find-references :before #'my-better-jumper-set-jump)
-  (advice-add 'consult-line :before #'my-better-jumper-set-jump)
-  (advice-add 'consult-imenu :before #'my-better-jumper-set-jump)
-  (advice-add 'consult-buffer :before #'my-better-jumper-set-jump)
-  (advice-add 'project-find-file :before #'my-better-jumper-set-jump)
-  (advice-add 'consult-grep :before #'my-better-jumper-set-jump)
-  (advice-add 'consult-ripgrep :before #'my-better-jumper-set-jump)
-  (advice-add 'my-isearch-forward-region-or-word :before #'my-better-jumper-set-jump)
-  (advice-add 'my-isearch-backward-region-or-word :before #'my-better-jumper-set-jump)
-  (advice-add 'begin-of-buffer :before #'my-better-jumper-set-jump)
-  (advice-add 'end-of-buffer :before #'my-better-jumper-set-jump)
-  (advice-add 'avy-goto-char-2 :before #'my-better-jumper-set-jump)
-  (advice-add 'avy-goto-char :before #'my-better-jumper-set-jump)
-  :config
-  (better-jumper-mode 1))
-
 (use-package crux
   :ensure t
   :bind (("C-c o" . crux-open-with)
@@ -937,39 +472,5 @@ or the default '*compilation*' buffer if no project is active."
   (global-diff-hl-mode)
   (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh))
 
-(use-package tempel
-  :custom
-  (tempel-path (expand-file-name "templates" minimal-emacs-user-directory))
-  :ensure t
-  :bind (("M-+" . tempel-complete)
-         ("M-*" . tempel-insert)
-         :map tempel-map
-         ("TAB" . tempel-next)
-         ("<tab>" . tempel-next)
-         ("S-TAB" . tempel-previous)
-         ("<backtab>" . tempel-previous))
-
-  :init
-  (defun tempel-setup-capf ()
-    (setq-local corfu-auto-trigger "/"
-                completion-at-point-functions
-                (cons (cape-capf-trigger #'tempel-complete ?/)
-                      completion-at-point-functions)))
-
-  (add-hook 'prog-mode-hook #'tempel-setup-capf)
-  (add-hook 'text-mode-hook #'tempel-setup-capf)
-  (add-hook 'conf-mode-hook #'tempel-setup-capf))
-
-(use-package tempel-collection
-  :ensure t
-  :after tempel)
-
-(use-package kind-icon
-  :ensure t
-  :after corfu
-  :custom
-  (kind-icon-use-icons nil)
-  ; (kind-icon-blend-background t)
-  ; (kind-icon-default-face 'corfu-default) ; only needed with blend-background
-  :config
-  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+;; TODO tempel
+;; TODO apheleia
